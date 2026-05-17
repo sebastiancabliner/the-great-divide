@@ -185,8 +185,11 @@ function GlobalStyles() {
       @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
       @keyframes progressBar{from{width:0}to{width:100%}}
       @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+      @keyframes debateGlow{0%,100%{box-shadow:0 0 10px rgba(224,36,36,.25),inset 0 0 0 1.5px rgba(224,36,36,.3)}50%{box-shadow:0 0 28px rgba(224,36,36,.55),inset 0 0 0 1.5px rgba(224,36,36,.7)}}
       .fade-in{animation:fadeIn .3s ease both}
       .fade-up{animation:fadeUp .4s ease both}
+      .debate-btn{animation:debateGlow 2.4s ease-in-out infinite}
+      .debate-btn:hover{animation:none;box-shadow:0 0 36px rgba(224,36,36,.7),inset 0 0 0 1.5px #E02424}
     `}</style>
   );
 }
@@ -471,8 +474,8 @@ function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column" }}>
       {/* Top nav */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", justifyContent: "flex-end", gap: 8, padding: "14px 18px", zIndex: 10 }}>
-        <button onClick={onDonate}  style={{ background: "rgba(245,158,11,.12)", border: "1px solid rgba(245,158,11,.25)", color: "#F59E0B", fontSize: 12, fontWeight: 500, padding: "7px 14px", borderRadius: 20 }}>☕ Support</button>
-        <button onClick={onContact} style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", color: "#94A3B8", fontSize: 12, padding: "7px 14px", borderRadius: 20 }}>Contact</button>
+        <button onClick={onDonate}  style={{ background: "rgba(245,158,11,.12)", border: "1px solid rgba(245,158,11,.3)", color: "#F59E0B", fontFamily: "'Anton',sans-serif", fontSize: 13, letterSpacing: ".5px", padding: "7px 16px", borderRadius: 20 }}>☕ SUPPORT</button>
+        <button onClick={onContact} style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", color: "#94A3B8", fontFamily: "'Anton',sans-serif", fontSize: 13, letterSpacing: ".5px", padding: "7px 16px", borderRadius: 20 }}>CONTACT</button>
       </div>
       {/* Hero */}
       <div style={{ position: "relative", width: "100%", height: mobile ? 260 : 400, overflow: "hidden", flexShrink: 0 }}>
@@ -498,26 +501,31 @@ function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
           15 questions. No filter. Discover your political bias and your <strong style={{ color: "#F59E0B" }}>Divide-O-Meter</strong> score.
         </p>
 
+        {/* Split CTA — blue left / red right */}
         <button onClick={() => { trackEvent("game_start", { mode: "solo" }); onPlay(); }}
-          style={{ width: "100%", padding: "18px 0", borderRadius: 12, background: "linear-gradient(135deg,#1A56DB,#1e40af)", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 22, letterSpacing: "1px", marginBottom: 12, boxShadow: "0 4px 24px rgba(26,86,219,.35)", transition: "transform .15s" }}
-          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.02)"}
-          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+          style={{ width: "100%", height: 62, borderRadius: 12, background: "linear-gradient(90deg,#1A56DB 50%,#C81E1E 50%)", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 22, letterSpacing: "1.5px", marginBottom: 12, boxShadow: "0 4px 28px rgba(26,86,219,.3), 0 4px 28px rgba(200,30,30,.2)", position: "relative", overflow: "hidden", transition: "transform .15s, box-shadow .15s" }}
+          onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.02)"; e.currentTarget.style.boxShadow = "0 6px 36px rgba(26,86,219,.45), 0 6px 36px rgba(200,30,30,.35)"; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 4px 28px rgba(26,86,219,.3), 0 4px 28px rgba(200,30,30,.2)"; }}>
+          {/* center divider */}
+          <span style={{ position: "absolute", left: "50%", top: "20%", bottom: "20%", width: 2, background: "rgba(255,255,255,0.25)", transform: "translateX(-50%)" }} />
           FIND OUT NOW
         </button>
 
+        {/* Debate — pulsing glow border */}
         <button onClick={() => { trackEvent("game_start", { mode: "debate" }); onDebate(); }}
-          style={{ width: "100%", padding: "15px 0", borderRadius: 12, background: "rgba(224,36,36,.1)", border: "1.5px solid rgba(224,36,36,.3)", color: "#F87171", fontFamily: "'Anton',sans-serif", fontSize: 17, letterSpacing: "1px", marginBottom: 28 }}>
+          className="debate-btn"
+          style={{ width: "100%", padding: "15px 0", borderRadius: 12, background: "rgba(200,30,30,.08)", color: "#F87171", fontFamily: "'Anton',sans-serif", fontSize: 17, letterSpacing: "1px", marginBottom: 28, border: "none" }}>
           🎙️ DEBATE MODE — PLAY WITH FRIENDS
         </button>
 
-        <button onClick={onHowTo} style={{ background: "none", color: "#475569", fontSize: 13, padding: 6, textDecoration: "underline" }}>
-          How it works
+        <button onClick={onHowTo} style={{ background: "none", color: "#475569", fontFamily: "'Anton',sans-serif", fontSize: 12, letterSpacing: ".5px", padding: 6 }}>
+          HOW IT WORKS ↓
         </button>
       </div>
 
       <div style={{ display: "flex", justifyContent: "center", gap: 24, padding: "14px 24px", borderTop: "1px solid #1A1D2E" }}>
-        <button onClick={onDonate}  style={{ background: "none", color: "#F59E0B", fontSize: 12, fontWeight: 500 }}>☕ Support</button>
-        <button onClick={onContact} style={{ background: "none", color: "#475569", fontSize: 12 }}>Contact</button>
+        <button onClick={onDonate}  style={{ background: "none", color: "#F59E0B", fontFamily: "'Anton',sans-serif", fontSize: 12, letterSpacing: ".5px" }}>☕ SUPPORT</button>
+        <button onClick={onContact} style={{ background: "none", color: "#475569", fontFamily: "'Anton',sans-serif", fontSize: 12, letterSpacing: ".5px" }}>CONTACT</button>
       </div>
     </div>
   );
