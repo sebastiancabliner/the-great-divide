@@ -978,40 +978,172 @@ function DebateStartScreen({ onBack, onHostGame, onJoinGame }) {
 function DebateHostScreen({ roomData, onClose }) {
   const mobile = window.innerWidth < 640;
   const { code, hostName } = roomData;
-  const [state,   setState]  = useState("lobby");
-  const [players, setPlayers] = useState([{ name: hostName, isHost: true }]);
-  const [results, setResults] = useState(null);
-  const [copied,  setCopied]  = useState(false);
-  const pollRef = useRef(null);
+  const [state,     setState]    = useState("lobby");
+  const [players,   setPlayers]  = useState([{ name: hostName, isHost: true }]);
+  const [results,   setResults]  = useState(null);
+  const [copied,    setCopied]   = useState(false);
+  // Question-playing state (host plays just like any other player)
+  const [questions]              = useState(() => pickQuestions());
+  const [qIndex,    setQIndex]   = useState(-1);
+  const [part,      setPart]     = useState("A");
+  const [selected,  setSelected] = useState(null);
+  const [confirmed, setConfirmed]= useState(false);
+  const [waiting,   setWaiting]  = useState(false); // between questions
+  const pollRef  = useRef(null);
+  const timerRef = useRef(null);
+  const answersRef = useRef([]);
 
   useEffect(() => {
-    pollRef.current = setInterval(poll, 3000);
-    return () => clearInterval(pollRef.current);
-  }, [state]);
+    pollRef.current = setInterval(poll, 2000);
+    return () => { clearInterval(pollRef.current); clearTimeout(timerRef.current); };
+  }, []);
 
   async function poll() {
     try {
       const res  = await fetch(`${PROXY_URL}/debate/${code}`);
       const data = await res.json();
       if (data.players) setPlayers(data.players);
+      if (data.state === "playing" && data.currentQuestion !== undefined && data.currentQuestion !== qIndex) {
+        setQIndex(data.currentQuestion);
+        setPart("A"); setSelected(null); setConfirmed(false); setWaiting(false);
+      }
       if (data.state === "done") { setResults(data.results); setState("done"); clearInterval(pollRef.current); }
     } catch (_) {}
   }
 
   async function startGame() {
-    try { await fetch(`${PROXY_URL}/debate/${code}/start`, { method: "POST" }); setState("playing"); trackEvent("debate_start", { code, player_count: players.length }); }
-    catch (_) {}
+    try {
+      await fetch(`${PROXY_URL}/debate/${code}/start`, { method: "POST" });
+      setState("playing");
+      setQIndex(0);
+      trackEvent("debate_start", { code, player_count: players.length });
+    } catch (_) {}
+  }
+
+  async function submitAnswer(bias, aCorrect) {
+    try {
+      await fetch(`${PROXY_URL}/debate/${code}/answer`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: hostName, qIndex, bias, aCorrect }),
+      });
+    } catch (_) {}
   }
 
   function copyCode() { navigator.clipboard?.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); }
 
   if (state === "done" && results) return <DebateResultsScreen results={results} onClose={onClose} />;
 
+  // ── Playing: host answers questions like a regular player ──────────────────
+  if (state === "playing" && qIndex >= 0 && questions[qIndex] && !waiting) {
+    const q         = questions[qIndex];
+    const isA       = part === "A";
+    const opts      = isA ? q.A.opts : q.B.opts;
+    const partColor = isA ? "#1A56DB" : "#E02424";
+    const biasBadge = (!isA && confirmed && selected !== null)
+      ? (BIAS_META[q.B.bias[selected]] ?? { label: q.B.bias[selected], color: "#64748B", desc: "" })
+      : null;
+    const progress = ((qIndex + (isA ? 0 : 0.5)) / questions.length) * 100;
+
+    function handleSelect(idx) { if (!confirmed) setSelected(idx); }
+    function handleConfirm() {
+      if (selected === null || confirmed) return;
+      setConfirmed(true);
+      if (isA) {
+        answersRef.current[qIndex] = { aPartChoice: selected, aPartCorrect: q.A.ans };
+        timerRef.current = setTimeout(() => { setPart("B"); setSelected(null); setConfirmed(false); }, 900);
+      } else {
+        const bias     = q.B.bias[selected] ?? "NEU";
+        const aCorrect = answersRef.current[qIndex]?.aPartChoice === q.A.ans;
+        submitAnswer(bias, aCorrect);
+      }
+    }
+    function handleNext() { setWaiting(true); setSelected(null); setConfirmed(false); }
+
+    return (
+      <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "14px 20px 0", display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={onClose} style={{ background: "none", color: "#475569", fontSize: 13, flexShrink: 0 }}>✕</button>
+          <div style={{ flex: 1, height: 4, background: "#1A1D2E", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${progress}%`, background: partColor, borderRadius: 2, transition: "width .4s" }} />
+          </div>
+          <Logo height={26} style={{ flexShrink: 0 }} />
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "#64748B", flexShrink: 0 }}>{qIndex + 1}/{questions.length}</div>
+        </div>
+        <div style={{ flex: 1, padding: mobile ? "20px 20px 32px" : "28px 24px", maxWidth: 600, margin: "0 auto", width: "100%" }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+            <div style={{ padding: "4px 12px", borderRadius: 20, background: partColor + "20", border: `1px solid ${partColor}40`, color: partColor, fontSize: 11, fontFamily: "'DM Mono',monospace" }}>
+              {isA ? "PART A — THE FACT" : "PART B — THE BIAS"}
+            </div>
+            <div style={{ fontSize: 11, color: "#475569", fontFamily: "'DM Mono',monospace" }}>{q.title}</div>
+          </div>
+          <h2 className="fade-in" key={`${qIndex}-${part}`} style={{ fontSize: mobile ? 17 : 19, fontWeight: 600, lineHeight: 1.55, marginBottom: 22 }}>
+            {isA ? q.A.q : q.B.q}
+          </h2>
+          {opts.map((opt, idx) => {
+            let style = { width: "100%", padding: "14px 16px", borderRadius: 10, background: "#1A1D2E", border: "1.5px solid #252840", color: "#F8FAFC", fontSize: 15, textAlign: "left", marginBottom: 10 };
+            if (confirmed && isA) {
+              if (idx === q.A.ans) style = { ...style, border: "1.5px solid #22C55E", background: "#22C55E15", color: "#86EFAC" };
+              else if (idx === selected) style = { ...style, border: "1.5px solid #E02424", background: "#E0242415", color: "#FCA5A5" };
+              else style = { ...style, opacity: 0.5 };
+            } else if (!confirmed && selected === idx) {
+              style = { ...style, border: `1.5px solid ${partColor}`, background: partColor + "18" };
+            } else if (confirmed && !isA && idx === selected) {
+              const bc = BIAS_META[q.B.bias[idx]]?.color ?? "#F59E0B";
+              style = { ...style, border: `1.5px solid ${bc}`, background: bc + "18" };
+            } else if (confirmed) {
+              style = { ...style, opacity: 0.5 };
+            }
+            return (
+              <button key={idx} onClick={() => handleSelect(idx)} disabled={confirmed} style={style}>
+                <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <span style={{ flexShrink: 0, width: 24, height: 24, borderRadius: 6, background: selected === idx ? partColor : "#252840", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: selected === idx ? "#fff" : "#64748B", fontFamily: "'DM Mono',monospace" }}>
+                    {String.fromCharCode(65 + idx)}
+                  </span>
+                  <span style={{ flex: 1 }}>{opt}</span>
+                </div>
+              </button>
+            );
+          })}
+          {isA && confirmed && selected !== null && selected !== q.A.ans && (
+            <div className="fade-in" style={{ padding: "11px 14px", background: "#22C55E12", borderRadius: 8, border: "1px solid #22C55E30", marginBottom: 10 }}>
+              <span style={{ color: "#86EFAC", fontSize: 13 }}>Correct: <strong>{String.fromCharCode(65 + q.A.ans)}</strong> — {q.A.opts[q.A.ans]}</span>
+            </div>
+          )}
+          {selected !== null && !confirmed && (
+            <button onClick={handleConfirm} className="fade-in"
+              style={{ marginTop: 18, width: "100%", padding: "16px 0", borderRadius: 12, background: partColor, color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 20, letterSpacing: 1 }}>
+              CONFIRM
+            </button>
+          )}
+          {isA && confirmed && (
+            <div style={{ marginTop: 10, textAlign: "center", color: selected === q.A.ans ? "#22C55E" : "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 12 }}>
+              {selected === q.A.ans ? "+15 pts ✓" : "+0 pts"}
+            </div>
+          )}
+          {biasBadge && (
+            <div className="fade-in" style={{ marginTop: 14, padding: 18, background: "#1A1D2E", borderRadius: 12, border: `2px solid ${biasBadge.color}40` }}>
+              <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: 2, marginBottom: 6 }}>YOUR BIAS</div>
+              <div style={{ color: biasBadge.color, fontFamily: "'Anton',sans-serif", fontSize: 20, marginBottom: 6 }}>{biasBadge.label.toUpperCase()}</div>
+              <p style={{ color: "#94A3B8", fontSize: 13, lineHeight: 1.6 }}>{biasBadge.desc}</p>
+            </div>
+          )}
+          {!isA && confirmed && biasBadge && (
+            <button onClick={handleNext} className="fade-in"
+              style={{ marginTop: 12, width: "100%", padding: "15px 0", borderRadius: 12, background: "linear-gradient(135deg,#1A56DB,#1e40af)", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 19, letterSpacing: 1 }}>
+              NEXT →
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Waiting between questions (host submitted, waiting for other player) ───
   if (state === "playing") return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
       <Logo height={140} style={{ margin: "0 auto 36px" }} />
-      <div style={{ fontFamily: "'DM Mono',monospace", color: "#94A3B8", fontSize: 14, marginBottom: 12, letterSpacing: 1 }}>Game in progress…</div>
-      <div style={{ color: "#F8FAFC", fontSize: 17, fontWeight: 500 }}>Waiting for all players to answer.</div>
+      <div style={{ fontFamily: "'DM Mono',monospace", color: "#94A3B8", fontSize: 14, marginBottom: 12, letterSpacing: 1 }}>Waiting for other players…</div>
+      <div style={{ color: "#F8FAFC", fontSize: 16 }}>Hang tight while others answer.</div>
       <button onClick={onClose} style={{ marginTop: 36, background: "none", color: "#64748B", fontFamily: "'Anton',sans-serif", fontSize: 13, letterSpacing: ".5px", textDecoration: "underline" }}>EXIT GAME</button>
     </div>
   );
