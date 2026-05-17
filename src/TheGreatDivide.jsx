@@ -572,12 +572,18 @@ function GameScreen({ onComplete, onQuit }) {
   const [selected,     setSelected]     = useState(null);
   const [confirmed,    setConfirmed]    = useState(false);
   const [inTransition, setInTransition] = useState(false);
+  const [lastBias,     setLastBias]     = useState(null);
   const [answers,      setAnswers]      = useState([]);
   const [score,        setScore]        = useState(0);
   const timerRef   = useRef(null);
   const answersRef = useRef([]);
   useEffect(() => { answersRef.current = answers; }, [answers]);
   useEffect(() => () => clearTimeout(timerRef.current), []);
+  useEffect(() => {
+    if (inTransition) {
+      timerRef.current = setTimeout(advanceFromTransition, 1200);
+    }
+  }, [inTransition]);
 
   const q      = questions[qIndex];
   const mobile = window.innerWidth < 640;
@@ -588,25 +594,16 @@ function GameScreen({ onComplete, onQuit }) {
   const tip = TIPS[qIndex % TIPS.length];
 
   // ── Transition screen ──────────────────────────────────────────────────────
-  if (inTransition) {
-    const nextNum = qIndex + 2;
-    const isLast  = qIndex + 1 >= questions.length;
+  if (inTransition && lastBias) {
     return (
-      <div onClick={advanceFromTransition}
+      <div onClick={() => { clearTimeout(timerRef.current); advanceFromTransition(); }}
         style={{ minHeight: "100vh", background: "#0a0d1a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 24, userSelect: "none" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ color: "#475569", fontFamily: "'DM Mono',monospace", fontSize: 12, letterSpacing: 3, marginBottom: 12 }}>QUESTION</div>
-          <div style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 96 : 128, color: "#F8FAFC", lineHeight: 1 }}>
-            {isLast ? "✓" : nextNum}
+        <div className="fade-in" style={{ textAlign: "center", maxWidth: 340 }}>
+          <div style={{ color: "#475569", fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: 3, marginBottom: 20 }}>YOUR BIAS</div>
+          <div style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 54 : 70, color: lastBias.color, lineHeight: 1, marginBottom: 20 }}>
+            {lastBias.label.toUpperCase()}
           </div>
-          <div style={{ color: "#475569", fontFamily: "'DM Mono',monospace", fontSize: 14, marginBottom: 40 }}>
-            {isLast ? "LAST ONE" : `OF ${questions.length}`}
-          </div>
-          <div style={{ maxWidth: 320, padding: "16px 20px", background: "#1A1D2E", borderRadius: 12, border: "1px solid #252840" }}>
-            <div style={{ color: "#F59E0B", fontSize: 11, fontFamily: "'DM Mono',monospace", marginBottom: 6 }}>TIP</div>
-            <div style={{ color: "#94A3B8", fontSize: 13, lineHeight: 1.6 }}>{tip}</div>
-          </div>
-          <div style={{ marginTop: 28, color: "#2D3154", fontSize: 12 }}>tap to continue</div>
+          <p style={{ color: "#94A3B8", fontSize: 15, lineHeight: 1.65 }}>{lastBias.desc}</p>
         </div>
       </div>
     );
@@ -641,17 +638,14 @@ function GameScreen({ onComplete, onQuit }) {
       trackEvent("question_answered", { part: "A", q_id: q.id, correct: selected === q.A.ans });
       timerRef.current = setTimeout(() => { setPart("B"); setSelected(null); setConfirmed(false); }, 1000);
     } else {
-      const bias = q.B.bias[selected] ?? "NEU";
+      const bias     = q.B.bias[selected] ?? "NEU";
+      const biasInfo = BIAS_META[bias] ?? { label: bias, color: "#64748B", desc: "" };
       setScore(s => s + 15);
       setAnswers(prev => { const a = [...prev]; a[qIndex] = { ...a[qIndex], bPartChoice: selected, bPartBias: bias }; return a; });
       trackEvent("question_answered", { part: "B", q_id: q.id, bias });
-      // Bias reveal shown inline — user taps NEXT manually
+      setLastBias(biasInfo);
+      setInTransition(true);
     }
-  }
-
-  function handleNext() {
-    clearTimeout(timerRef.current);
-    setInTransition(true);
   }
 
   function advanceFromTransition() {
@@ -665,9 +659,6 @@ function GameScreen({ onComplete, onQuit }) {
   }
 
   const progress = ((qIndex + (isA ? 0 : 0.5)) / questions.length) * 100;
-
-  // Bias reveal state (Part B, confirmed)
-  const biasBadge = (!isA && confirmed && selected !== null) ? (BIAS_META[q.B.bias[selected]] ?? { label: q.B.bias[selected], color: "#64748B", desc: "" }) : null;
 
   return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column" }}>
@@ -738,27 +729,6 @@ function GameScreen({ onComplete, onQuit }) {
           </div>
         )}
 
-        {/* Part B bias reveal */}
-        {biasBadge && (
-          <div className="fade-in" style={{ marginTop: 16, padding: "18px 18px", background: "#1A1D2E", borderRadius: 12, border: `2px solid ${biasBadge.color}40` }}>
-            <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: 2, marginBottom: 8 }}>YOUR BIAS</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <div style={{ padding: "4px 14px", borderRadius: 20, background: biasBadge.color + "25", color: biasBadge.color, fontFamily: "'Anton',sans-serif", fontSize: 20, letterSpacing: 1 }}>
-                {biasBadge.label.toUpperCase()}
-              </div>
-              <div style={{ color: "#F59E0B", fontFamily: "'DM Mono',monospace", fontSize: 11 }}>+15 pts</div>
-            </div>
-            <p style={{ color: "#94A3B8", fontSize: 13, lineHeight: 1.6 }}>{biasBadge.desc}</p>
-          </div>
-        )}
-
-        {/* Next button (Part B after bias reveal) */}
-        {!isA && confirmed && biasBadge && (
-          <button onClick={handleNext} className="fade-in"
-            style={{ marginTop: 14, width: "100%", padding: "16px 0", borderRadius: 12, background: "linear-gradient(135deg,#1A56DB,#1e40af)", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 20, letterSpacing: 1 }}>
-            {qIndex + 1 >= questions.length ? "SEE MY RESULT →" : "NEXT →"}
-          </button>
-        )}
       </div>
     </div>
   );
