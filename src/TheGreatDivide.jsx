@@ -1401,6 +1401,14 @@ export default function TheGreatDivide() {
 
       {showContact && <ContactModal  onClose={() => setShowContact(false)} />}
       {showDonate  && <DonateModal   onClose={() => setShowDonate(false)}  />}
+
+      {/* Persistent Support button — visible on every screen except home (home has its own) */}
+      {screen !== "home" && (
+        <button onClick={() => setShowDonate(true)}
+          style={{ position: "fixed", bottom: 20, right: 16, zIndex: 100, display: "flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 24, background: "rgba(245,158,11,.15)", border: "1px solid rgba(245,158,11,.35)", color: "#F59E0B", fontFamily: "'Anton',sans-serif", fontSize: 13, letterSpacing: ".5px", backdropFilter: "blur(8px)", boxShadow: "0 2px 12px rgba(0,0,0,.3)" }}>
+          ☕ SUPPORT
+        </button>
+      )}
     </>
   );
 }
