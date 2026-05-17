@@ -1009,10 +1009,10 @@ function DebateHostScreen({ roomData, onClose }) {
 
   if (state === "playing") return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
-      <Logo height={36} style={{ margin: "0 auto 24px" }} />
-      <div style={{ fontFamily: "'DM Mono',monospace", color: "#64748B", fontSize: 13, marginBottom: 12 }}>Game in progress…</div>
-      <div style={{ color: "#94A3B8", fontSize: 14 }}>Waiting for all players to answer.</div>
-      <button onClick={onClose} style={{ marginTop: 32, background: "none", color: "#475569", fontSize: 13, textDecoration: "underline" }}>Exit game</button>
+      <Logo height={140} style={{ margin: "0 auto 36px" }} />
+      <div style={{ fontFamily: "'DM Mono',monospace", color: "#94A3B8", fontSize: 14, marginBottom: 12, letterSpacing: 1 }}>Game in progress…</div>
+      <div style={{ color: "#F8FAFC", fontSize: 17, fontWeight: 500 }}>Waiting for all players to answer.</div>
+      <button onClick={onClose} style={{ marginTop: 36, background: "none", color: "#64748B", fontFamily: "'Anton',sans-serif", fontSize: 13, letterSpacing: ".5px", textDecoration: "underline" }}>EXIT GAME</button>
     </div>
   );
 
