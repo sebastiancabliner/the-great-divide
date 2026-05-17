@@ -20,13 +20,13 @@ const LEFT_BIASES  = ["DEM", "PROG"];
 const RIGHT_BIASES = ["CON", "LIB", "POP"];
 
 const ARCHETYPES = [
-  { min: 0,  max: 14,  label: "The Progressive Firebrand",  color: "#1A56DB", avatar: "/avatar-tgd-far-left.webp",    desc: "Social justice, systemic change, and bold progressive policy are your north star. You believe the status quo fails ordinary people." },
-  { min: 15, max: 29,  label: "The Liberal Democrat",        color: "#3B82F6", avatar: "/avatar-tgd-left.webp",        desc: "You're solidly liberal. You trust government to solve big problems and you vote blue without much hesitation." },
-  { min: 30, max: 44,  label: "The Center-Left Pragmatist",  color: "#14B8A6", avatar: "/avatar-tgd-center-left.webp", desc: "You lean left but you're practical. You want progress — just not overnight, and not at any cost." },
-  { min: 45, max: 55,  label: "The Independent",             color: "#F59E0B", avatar: "/avatar-tgd-neutral.webp",     desc: "You don't fit neatly in a box. You pick and choose your positions, frustrating both sides equally." },
-  { min: 56, max: 70,  label: "The Center-Right Moderate",   color: "#F97316", avatar: "/avatar-tgd-center-right.webp",desc: "You lean right but you're not extreme. Fiscal responsibility and personal freedom are core to your worldview." },
-  { min: 71, max: 85,  label: "The Conservative",            color: "#EF4444", avatar: "/avatar-tgd-right.webp",       desc: "You're firmly on the right. Traditional values, limited government, and free markets define your politics." },
-  { min: 86, max: 100, label: "The MAGA Loyalist",           color: "#B91C1C", avatar: "/avatar-tgd-far-right.webp",  desc: "You're all-in on the populist right. You distrust institutions, love America loud, and don't apologize for it." },
+  { min: 0,  max: 14,  icon: "✊", label: "The Progressive Firebrand",  color: "#1A56DB", avatar: "/avatar-tgd-far-left.webp",    desc: "Social justice, systemic change, and bold progressive policy are your north star. You believe the status quo fails ordinary people." },
+  { min: 15, max: 29,  icon: "🫏", label: "The Liberal Democrat",        color: "#3B82F6", avatar: "/avatar-tgd-left.webp",        desc: "You're solidly liberal. You trust government to solve big problems and you vote blue without much hesitation." },
+  { min: 30, max: 44,  icon: "🌊", label: "The Center-Left Pragmatist",  color: "#14B8A6", avatar: "/avatar-tgd-center-left.webp", desc: "You lean left but you're practical. You want progress — just not overnight, and not at any cost." },
+  { min: 45, max: 55,  icon: "⚖️", label: "The Independent",             color: "#F59E0B", avatar: "/avatar-tgd-neutral.webp",     desc: "You don't fit neatly in a box. You pick and choose your positions, frustrating both sides equally." },
+  { min: 56, max: 70,  icon: "🏛️", label: "The Center-Right Moderate",   color: "#F97316", avatar: "/avatar-tgd-center-right.webp",desc: "You lean right but you're not extreme. Fiscal responsibility and personal freedom are core to your worldview." },
+  { min: 71, max: 85,  icon: "🦅", label: "The Conservative",            color: "#EF4444", avatar: "/avatar-tgd-right.webp",       desc: "You're firmly on the right. Traditional values, limited government, and free markets define your politics." },
+  { min: 86, max: 100, icon: "🐘", label: "The MAGA Loyalist",           color: "#B91C1C", avatar: "/avatar-tgd-far-right.webp",  desc: "You're all-in on the populist right. You distrust institutions, love America loud, and don't apologize for it." },
 ];
 
 const TIPS = [
@@ -750,76 +750,74 @@ function GameScreen({ onComplete, onQuit }) {
 // ─── DivideOmeterCard ─────────────────────────────────────────────────────────
 
 function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
-  const mobile    = window.innerWidth < 640;
-  const gauge     = calcDivideOMeter(answers);
-  const result    = getResult(gauge);
-  const stats     = calcStats(answers);
-  const dirLabel  = getDirectionLabel(gauge);
+  const mobile  = window.innerWidth < 640;
+  const gauge   = calcDivideOMeter(answers);
+  const result  = getResult(gauge);
+  const stats   = calcStats(answers);
   const [showShare, setShowShare] = useState(false);
 
   useEffect(() => {
     trackEvent("game_complete", { gauge, archetype: result.label, score: stats.score });
   }, []);
 
-  // Bias breakdown
   const biasCounts = {};
   answers.forEach(({ bPartBias }) => { if (bPartBias) biasCounts[bPartBias] = (biasCounts[bPartBias] ?? 0) + 1; });
   const biasEntries = Object.entries(biasCounts).sort((a, b) => b[1] - a[1]);
+  const scoreStr    = stats.score.toLocaleString();
 
   return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
-      <div style={{ padding: "18px 20px 0", display: "flex", justifyContent: "center" }}>
-        <Logo height={36} />
+      <div style={{ padding: "16px 20px 0", display: "flex", justifyContent: "center" }}>
+        <Logo height={32} />
       </div>
 
-      <div style={{ flex: 1, padding: mobile ? "20px 20px 40px" : "28px 24px 60px", maxWidth: 520, margin: "0 auto", width: "100%" }}>
+      <div style={{ flex: 1, padding: mobile ? "14px 18px 40px" : "20px 24px 60px", maxWidth: 480, margin: "0 auto", width: "100%" }}>
 
         {/* Title */}
-        <div className="fade-in" style={{ textAlign: "center", marginBottom: 4 }}>
-          <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: 3, marginBottom: 4 }}>YOUR RESULT</div>
-          <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 24 : 30, letterSpacing: 1, marginBottom: 2 }}>YOUR DIVIDE-O-METER</h1>
+        <div className="fade-in" style={{ textAlign: "center", marginBottom: 8 }}>
+          <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 3, marginBottom: 2 }}>YOUR RESULT</div>
+          <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 26 : 32, letterSpacing: 1, marginBottom: 2 }}>YOUR DIVIDE-O-METER</h1>
           <div style={{ color: "#475569", fontSize: 12 }}>Based on your answers to {answers.length} questions</div>
         </div>
 
-        {/* Gauge with % */}
-        <div className="fade-in" style={{ textAlign: "center", marginBottom: 8, marginTop: 16 }}>
-          <DivideOMeterGauge gauge={gauge} size={300} showLabel={true} />
+        {/* Gauge */}
+        <div className="fade-in">
+          <DivideOMeterGauge gauge={gauge} size={320} showLabel={true} />
         </div>
 
-        {/* LEFT / RIGHT bar labels */}
-        <div style={{ display: "flex", justifyContent: "space-between", paddingInline: 10, marginBottom: 20 }}>
-          <span style={{ color: "#1A56DB", fontFamily: "'DM Mono',monospace", fontSize: 11 }}>← LEFT</span>
-          <span style={{ color: "#E02424", fontFamily: "'DM Mono',monospace", fontSize: 11 }}>RIGHT →</span>
+        {/* LEFT / RIGHT */}
+        <div style={{ display: "flex", justifyContent: "space-between", paddingInline: 8, marginTop: -6, marginBottom: 16 }}>
+          <span style={{ color: "#1A56DB", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 600 }}>← LEFT</span>
+          <span style={{ color: "#C81E1E", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 600 }}>RIGHT →</span>
         </div>
 
-        {/* Archetype card */}
-        <div style={{ background: "#1A1D2E", borderRadius: 16, padding: 20, marginBottom: 14, border: `1px solid ${result.color}30` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <img src={result.avatar} alt={result.label}
-              style={{ width: 68, height: 68, borderRadius: "50%", border: `2.5px solid ${result.color}`, objectFit: "cover", flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 2, marginBottom: 4 }}>YOUR ARCHETYPE</div>
-              <h2 style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 20 : 24, color: result.color, letterSpacing: ".5px", lineHeight: 1.1 }}>
-                {result.label.toUpperCase()}
-              </h2>
-            </div>
+        {/* Archetype pill */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "10px 22px", borderRadius: 40, background: result.color + "1A", border: `1.5px solid ${result.color}55` }}>
+            <span style={{ fontSize: 22 }}>{result.icon}</span>
+            <span style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 18 : 20, color: result.color, letterSpacing: 1 }}>
+              {result.label.toUpperCase()}
+            </span>
           </div>
-          <p style={{ color: "#94A3B8", fontSize: 13, lineHeight: 1.7, marginTop: 14, borderTop: "1px solid #252840", paddingTop: 14 }}>
-            ❝ {result.desc} ❞
-          </p>
         </div>
 
-        {/* Stats row */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+        {/* Quote */}
+        <div style={{ background: "#1A1D2E", borderRadius: 14, padding: "16px 18px", marginBottom: 12, border: `1px solid ${result.color}20` }}>
+          <span style={{ color: result.color, fontSize: 22, lineHeight: 0, verticalAlign: "middle", marginRight: 8 }}>❝</span>
+          <span style={{ color: "#94A3B8", fontSize: 14, lineHeight: 1.7 }}>{result.desc}</span>
+          <span style={{ color: result.color, fontSize: 22, lineHeight: 0, verticalAlign: "middle", marginLeft: 8 }}>❞</span>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
           {[
             { label: "FACTS", value: `${stats.factsCorrect}/15`, sub: `${Math.round((stats.factsCorrect / 15) * 100)}%` },
             { label: "BIAS",  value: `${stats.biasAnswered}/15`, sub: "100%" },
-            { label: "SCORE", value: stats.score, sub: "pts" },
+            { label: "SCORE", value: scoreStr,                   sub: "POINTS" },
           ].map(({ label, value, sub }) => (
-            <div key={label} style={{ background: "#1A1D2E", borderRadius: 12, padding: "14px 10px", textAlign: "center" }}>
-              <div style={{ color: "#64748B", fontSize: 10, fontFamily: "'DM Mono',monospace", marginBottom: 4 }}>{label}</div>
-              <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 22, color: "#F59E0B" }}>{value}</div>
+            <div key={label} style={{ background: "#1A1D2E", borderRadius: 12, padding: "14px 8px", textAlign: "center" }}>
+              <div style={{ color: "#64748B", fontSize: 10, fontFamily: "'DM Mono',monospace", letterSpacing: 1, marginBottom: 4 }}>{label}</div>
+              <div style={{ fontFamily: "'Anton',sans-serif", fontSize: label === "SCORE" ? (mobile ? 18 : 22) : 24, color: "#F59E0B" }}>{value}</div>
               <div style={{ color: "#475569", fontSize: 11, fontFamily: "'DM Mono',monospace" }}>{sub}</div>
             </div>
           ))}
@@ -827,47 +825,64 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
 
         {/* Bias breakdown */}
         {biasEntries.length > 0 && (
-          <div style={{ background: "#1A1D2E", borderRadius: 12, padding: 18, marginBottom: 14 }}>
-            <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 2, marginBottom: 14 }}>BIAS BREAKDOWN</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {biasEntries.map(([bias, count]) => {
-                const meta = BIAS_META[bias] ?? { label: bias, color: "#64748B" };
-                const pct  = Math.round((count / answers.length) * 100);
-                return (
-                  <div key={bias}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                      <span style={{ fontSize: 13, color: meta.color, fontFamily: "'DM Mono',monospace" }}>{meta.label}</span>
-                      <span style={{ fontSize: 11, color: "#64748B", fontFamily: "'DM Mono',monospace" }}>{count}× ({pct}%)</span>
-                    </div>
-                    <div style={{ height: 5, background: "#252840", borderRadius: 3, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${pct}%`, background: meta.color, borderRadius: 3 }} />
-                    </div>
+          <div style={{ background: "#1A1D2E", borderRadius: 12, padding: "14px 16px", marginBottom: 12 }}>
+            <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 2, marginBottom: 10 }}>BIAS BREAKDOWN</div>
+            {biasEntries.map(([bias, count]) => {
+              const meta = BIAS_META[bias] ?? { label: bias, color: "#64748B" };
+              const pct  = Math.round((count / answers.length) * 100);
+              return (
+                <div key={bias} style={{ marginBottom: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                    <span style={{ fontSize: 12, color: meta.color }}>{meta.label}</span>
+                    <span style={{ fontSize: 11, color: "#64748B", fontFamily: "'DM Mono',monospace" }}>{count}× ({pct}%)</span>
                   </div>
-                );
-              })}
-            </div>
+                  <div style={{ height: 4, background: "#252840", borderRadius: 2 }}>
+                    <div style={{ height: "100%", width: `${pct}%`, background: meta.color, borderRadius: 2 }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
-        {/* Share */}
-        <button onClick={() => { setShowShare(true); trackEvent("share_click", { archetype: result.label }); }}
-          style={{ width: "100%", padding: "16px 0", borderRadius: 12, background: "linear-gradient(135deg,#1A56DB,#1e40af)", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 20, letterSpacing: 1, marginBottom: 10 }}>
-          📤  SHARE RESULT
-        </button>
+        {/* Donate card with coffee mug */}
+        <div style={{ background: "#1A1D2E", borderRadius: 16, padding: "18px 18px 18px 18px", marginBottom: 12, border: "1px solid #252840", position: "relative", overflow: "hidden" }}>
+          <img src="/cafecito-logo.webp" alt=""
+            style={{ position: "absolute", right: -6, top: -6, height: mobile ? 120 : 140, pointerEvents: "none", opacity: 0.95 }} />
+          <div style={{ paddingRight: mobile ? 96 : 116 }}>
+            <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 15, marginBottom: 5, lineHeight: 1.2 }}>KEEP THE<br/>DIVIDE ALIVE</div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              {[["$3","Coffee"],["$6","Double"],["$9","Mega"]].map(([amt, lbl]) => (
+                <a key={amt} href={KOFI_URL} target="_blank" rel="noopener noreferrer"
+                  onClick={() => trackEvent("donate_click", { amount: amt })}
+                  style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 1, padding: "9px 4px", borderRadius: 10, background: "#252840", border: "1px solid #2D3154", textDecoration: "none" }}>
+                  <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 16, color: "#F59E0B" }}>{amt}</span>
+                  <span style={{ fontSize: 9, color: "#64748B" }}>{lbl}</span>
+                </a>
+              ))}
+            </div>
+            <a href={KOFI_URL} target="_blank" rel="noopener noreferrer"
+              onClick={() => trackEvent("donate_click", { amount: "custom" })}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 0", borderRadius: 10, background: "#FF5E5B", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 14, letterSpacing: 1, textDecoration: "none", width: "100%" }}>
+              ☕ BUY A COFFEE
+            </a>
+          </div>
+        </div>
 
-        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+        {/* Action buttons */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
           <button onClick={onPlayAgain}
-            style={{ flex: 1, padding: "14px 0", borderRadius: 12, background: "none", border: "1.5px solid #252840", color: "#94A3B8", fontFamily: "'Anton',sans-serif", fontSize: 16, letterSpacing: 1 }}>
+            style={{ padding: "16px 0", borderRadius: 12, background: "linear-gradient(135deg,#1A56DB,#1e40af)", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 17, letterSpacing: 1 }}>
             PLAY AGAIN
           </button>
-          <button onClick={onDonate}
-            style={{ flex: 1, padding: "14px 0", borderRadius: 12, background: "rgba(255,94,91,.12)", border: "1.5px solid rgba(255,94,91,.3)", color: "#FF7875", fontFamily: "'Anton',sans-serif", fontSize: 16, letterSpacing: 1 }}>
-            ☕ SUPPORT
+          <button onClick={() => { setShowShare(true); trackEvent("share_click", { archetype: result.label }); }}
+            style={{ padding: "16px 0", borderRadius: 12, background: "#1A1D2E", border: "1.5px solid #2D3154", color: "#F8FAFC", fontFamily: "'Anton',sans-serif", fontSize: 15, letterSpacing: 1 }}>
+            📤 SHARE →
           </button>
         </div>
 
         <div style={{ textAlign: "center" }}>
-          <button onClick={onContact} style={{ background: "none", color: "#475569", fontSize: 12, textDecoration: "underline" }}>Contact</button>
+          <button onClick={onContact} style={{ background: "none", color: "#475569", fontFamily: "'Anton',sans-serif", fontSize: 11, letterSpacing: ".5px" }}>CONTACT</button>
         </div>
       </div>
 
