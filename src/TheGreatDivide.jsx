@@ -469,6 +469,11 @@ function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column" }}>
+      {/* Top nav */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", justifyContent: "flex-end", gap: 8, padding: "14px 18px", zIndex: 10 }}>
+        <button onClick={onDonate}  style={{ background: "rgba(245,158,11,.12)", border: "1px solid rgba(245,158,11,.25)", color: "#F59E0B", fontSize: 12, fontWeight: 500, padding: "7px 14px", borderRadius: 20 }}>☕ Support</button>
+        <button onClick={onContact} style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", color: "#94A3B8", fontSize: 12, padding: "7px 14px", borderRadius: 20 }}>Contact</button>
+      </div>
       {/* Hero */}
       <div style={{ position: "relative", width: "100%", height: mobile ? 260 : 400, overflow: "hidden", flexShrink: 0 }}>
         <img
