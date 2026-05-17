@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+
+# Source/design files — not needed in repo
+*.png
+*.rtf
+*.txt
+*.md
