@@ -478,9 +478,9 @@ function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
         />
         {/* Lighter overlay so Capitol is visible */}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(15,18,33,0.15) 0%, rgba(15,18,33,0.3) 50%, #0f1221 100%)" }} />
-        {/* Logo — centered, prominent */}
-        <div style={{ position: "absolute", top: 28, left: 0, right: 0, display: "flex", justifyContent: "center" }}>
-          <Logo height={mobile ? 72 : 92} />
+        {/* Logo — centered in hero */}
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: mobile ? 40 : 60 }}>
+          <Logo height={mobile ? 130 : 180} />
         </div>
       </div>
 
@@ -502,7 +502,7 @@ function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
 
         <button onClick={() => { trackEvent("game_start", { mode: "debate" }); onDebate(); }}
           style={{ width: "100%", padding: "15px 0", borderRadius: 12, background: "rgba(224,36,36,.1)", border: "1.5px solid rgba(224,36,36,.3)", color: "#F87171", fontFamily: "'Anton',sans-serif", fontSize: 17, letterSpacing: "1px", marginBottom: 28 }}>
-          🔥 DEBATE MODE — PLAY WITH FRIENDS
+          🎙️ DEBATE MODE — PLAY WITH FRIENDS
         </button>
 
         <button onClick={onHowTo} style={{ background: "none", color: "#475569", fontSize: 13, padding: 6, textDecoration: "underline" }}>
