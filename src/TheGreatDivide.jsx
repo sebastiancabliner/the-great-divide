@@ -59,6 +59,11 @@ function pickQuestions() {
   return picked.slice(0, TOTAL).sort(() => Math.random() - 0.5);
 }
 
+const Q_MAP = Object.fromEntries(Q.map(q => [q.id, q]));
+function pickQuestionsById(ids) {
+  return ids.map(id => Q_MAP[id]).filter(Boolean);
+}
+
 function calcDivideOMeter(answers) {
   let left = 0, right = 0;
   answers.forEach(({ bPartBias }) => {
@@ -1004,15 +1009,18 @@ function DebateHostScreen({ roomData, onClose }) {
   const [results,   setResults]  = useState(null);
   const [copied,    setCopied]   = useState(false);
   // Question-playing state (host plays just like any other player)
-  const [questions]              = useState(() => pickQuestions());
+  const [questions, setQuestions] = useState(null);
   const [qIndex,    setQIndex]   = useState(-1);
   const [part,      setPart]     = useState("A");
   const [selected,  setSelected] = useState(null);
   const [confirmed, setConfirmed]= useState(false);
   const [waiting,   setWaiting]  = useState(false); // between questions
-  const pollRef  = useRef(null);
-  const timerRef = useRef(null);
+  const pollRef    = useRef(null);
+  const timerRef   = useRef(null);
   const answersRef = useRef([]);
+  const qIndexRef  = useRef(-1);
+
+  useEffect(() => { qIndexRef.current = qIndex; }, [qIndex]);
 
   useEffect(() => {
     pollRef.current = setInterval(poll, 2000);
@@ -1024,7 +1032,7 @@ function DebateHostScreen({ roomData, onClose }) {
       const res  = await fetch(`${PROXY_URL}/debate/${code}`);
       const data = await res.json();
       if (data.players) setPlayers(data.players);
-      if (data.state === "playing" && data.currentQuestion !== undefined && data.currentQuestion !== qIndex) {
+      if (data.state === "playing" && data.currentQuestion !== undefined && data.currentQuestion !== qIndexRef.current) {
         setQIndex(data.currentQuestion);
         setPart("A"); setSelected(null); setConfirmed(false); setWaiting(false);
       }
@@ -1034,9 +1042,15 @@ function DebateHostScreen({ roomData, onClose }) {
 
   async function startGame() {
     try {
-      await fetch(`${PROXY_URL}/debate/${code}/start`, { method: "POST" });
-      setState("playing");
+      const picked      = pickQuestions();
+      const questionIds = picked.map(q => q.id);
+      setQuestions(picked);
       setQIndex(0);
+      await fetch(`${PROXY_URL}/debate/${code}/start`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionIds }),
+      });
+      setState("playing");
       trackEvent("debate_start", { code, player_count: players.length });
     } catch (_) {}
   }
@@ -1055,7 +1069,7 @@ function DebateHostScreen({ roomData, onClose }) {
   if (state === "done" && results) return <DebateResultsScreen results={results} onClose={onClose} />;
 
   // ── Playing: host answers questions like a regular player ──────────────────
-  if (state === "playing" && qIndex >= 0 && questions[qIndex] && !waiting) {
+  if (state === "playing" && qIndex >= 0 && questions && questions[qIndex] && !waiting) {
     const q         = questions[qIndex];
     const isA       = part === "A";
     const opts      = isA ? q.A.opts : q.B.opts;
@@ -1208,26 +1222,32 @@ function DebateHostScreen({ roomData, onClose }) {
 function DebatePlayerScreen({ roomInfo, onClose }) {
   const mobile  = window.innerWidth < 640;
   const { code, playerName } = roomInfo;
-  const [gameState, setGameState] = useState("waiting");
-  const [qIndex,    setQIndex]    = useState(-1);
-  const [questions] = useState(() => pickQuestions());
-  const [part,      setPart]      = useState("A");
-  const [selected,  setSelected]  = useState(null);
-  const [confirmed, setConfirmed] = useState(false);
-  const [answers,   setAnswers]   = useState([]);
-  const [results,   setResults]   = useState(null);
-  const pollRef = useRef(null);
+  const [gameState,  setGameState]  = useState("waiting");
+  const [qIndex,     setQIndex]     = useState(-1);
+  const [questions,  setQuestions]  = useState(null);
+  const [part,       setPart]       = useState("A");
+  const [selected,   setSelected]   = useState(null);
+  const [confirmed,  setConfirmed]  = useState(false);
+  const [answers,    setAnswers]    = useState([]);
+  const [results,    setResults]    = useState(null);
+  const pollRef   = useRef(null);
+  const qIndexRef = useRef(-1);
+
+  useEffect(() => { qIndexRef.current = qIndex; }, [qIndex]);
 
   useEffect(() => {
     pollRef.current = setInterval(poll, 2000);
     return () => clearInterval(pollRef.current);
-  }, [gameState, qIndex]);
+  }, []);
 
   async function poll() {
     try {
       const res  = await fetch(`${PROXY_URL}/debate/${code}`);
       const data = await res.json();
-      if (data.state === "playing" && data.currentQuestion !== undefined && data.currentQuestion !== qIndex) {
+      if (data.questionIds && data.questionIds.length) {
+        setQuestions(prev => prev ?? pickQuestionsById(data.questionIds));
+      }
+      if (data.state === "playing" && data.currentQuestion !== undefined && data.currentQuestion !== qIndexRef.current) {
         setGameState("question"); setQIndex(data.currentQuestion); setPart("A"); setSelected(null); setConfirmed(false);
       }
       if (data.state === "done") { setResults(data.results); setGameState("done"); clearInterval(pollRef.current); }
@@ -1250,7 +1270,7 @@ function DebatePlayerScreen({ roomInfo, onClose }) {
     </div>
   );
 
-  if (qIndex < 0 || !questions[qIndex]) return (
+  if (qIndex < 0 || !questions || !questions[qIndex]) return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace" }}>Loading…</div>
     </div>
@@ -1284,10 +1304,10 @@ function DebatePlayerScreen({ roomInfo, onClose }) {
       <div style={{ padding: "14px 20px 0", display: "flex", alignItems: "center", gap: 12 }}>
         <button onClick={onClose} style={{ background: "none", color: "#475569", fontSize: 13 }}>✕</button>
         <div style={{ flex: 1, height: 4, background: "#1A1D2E", borderRadius: 2, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${((qIndex + (isA ? 0 : 0.5)) / questions.length) * 100}%`, background: partColor, borderRadius: 2, transition: "width .4s" }} />
+          <div style={{ height: "100%", width: `${((qIndex + (isA ? 0 : 0.5)) / (questions?.length || 15)) * 100}%`, background: partColor, borderRadius: 2, transition: "width .4s" }} />
         </div>
         <Logo height={26} />
-        <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "#64748B" }}>{qIndex + 1}/{questions.length}</div>
+        <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "#64748B" }}>{qIndex + 1}/{questions?.length || 15}</div>
       </div>
       <div style={{ flex: 1, padding: mobile ? "20px 20px 32px" : "28px 24px", maxWidth: 600, margin: "0 auto", width: "100%" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
