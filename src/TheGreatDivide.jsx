@@ -470,22 +470,22 @@ function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
   return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column" }}>
       {/* Hero */}
-      <div style={{ position: "relative", width: "100%", height: mobile ? 320 : 460, overflow: "hidden", flexShrink: 0 }}>
+      <div style={{ position: "relative", width: "100%", height: mobile ? 260 : 400, overflow: "hidden", flexShrink: 0 }}>
         <img
           src={mobile ? "/tgd-capitol-hero-mobile.webp" : "/tgd-capitol-hero-desktop.webp"}
           alt="U.S. Capitol"
           style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 30%" }}
         />
-        {/* Lighter overlay so Capitol is visible */}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(15,18,33,0.15) 0%, rgba(15,18,33,0.3) 50%, #0f1221 100%)" }} />
+        {/* Very light overlay — keep Capitol visible */}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(15,18,33,0.0) 0%, rgba(15,18,33,0.08) 55%, #0f1221 100%)" }} />
         {/* Logo — centered in hero */}
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: mobile ? 40 : 60 }}>
-          <Logo height={mobile ? 130 : 180} />
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: mobile ? 20 : 30 }}>
+          <Logo height={mobile ? 170 : 240} />
         </div>
       </div>
 
-      {/* Content — tighter below hero */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: mobile ? "20px 20px 40px" : "24px 24px 60px", maxWidth: 520, margin: "0 auto", width: "100%" }}>
+      {/* Content — tight below hero */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: mobile ? "8px 20px 40px" : "12px 24px 60px", maxWidth: 520, margin: "0 auto", width: "100%" }}>
         <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 40 : 54, letterSpacing: ".5px", textAlign: "center", lineHeight: 1.05, marginBottom: 10 }}>
           HOW BIASED<br />ARE YOU?
         </h1>
