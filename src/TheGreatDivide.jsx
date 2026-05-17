@@ -487,10 +487,10 @@ function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
         <img
           src={mobile ? "/tgd-capitol-hero-mobile.webp" : "/tgd-capitol-hero-desktop.webp"}
           alt="U.S. Capitol"
-          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 30%", filter: "brightness(1.25)" }}
+          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 25%", filter: "brightness(1.5) contrast(0.92) saturate(1.05)" }}
         />
-        {/* Only fade at the very bottom to blend into page background */}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 0%, transparent 88%, #0f1221 100%)" }} />
+        {/* Lift the lower-Capitol shadows with a subtle warm wash, then fade only at the very bottom into page bg */}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 55%, rgba(255,220,180,0.08) 78%, transparent 92%, #0f1221 100%)" }} />
         {/* Logo — centered in hero */}
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: mobile ? 20 : 30 }}>
           <Logo height={mobile ? 170 : 240} />
