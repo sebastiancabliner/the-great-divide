@@ -1090,11 +1090,10 @@ function DebatePlayerScreen({ roomInfo, onClose }) {
 
   if (gameState === "waiting") return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
-      <Logo height={44} style={{ margin: "0 auto 28px" }} />
+      <Logo height={140} style={{ margin: "0 auto 36px" }} />
       <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 26, marginBottom: 10 }}>WAITING FOR HOST</div>
-      <div style={{ color: "#64748B", fontSize: 14, marginBottom: 28 }}>The host will start the game shortly.</div>
-      <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 16, color: "#F59E0B", letterSpacing: 6 }}>{code}</div>
-      <button onClick={onClose} style={{ marginTop: 36, background: "none", color: "#475569", fontSize: 13, textDecoration: "underline" }}>Leave</button>
+      <div style={{ color: "#F8FAFC", fontSize: 16 }}>The host will start the game shortly.</div>
+      <button onClick={onClose} style={{ marginTop: 36, background: "none", color: "#64748B", fontFamily: "'Anton',sans-serif", fontSize: 13, letterSpacing: ".5px", textDecoration: "underline" }}>LEAVE</button>
     </div>
   );
 
