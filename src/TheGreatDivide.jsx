@@ -934,22 +934,40 @@ function DebateStartScreen({ onBack, onHostGame, onJoinGame }) {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "18px 20px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <button onClick={onBack} style={{ background: "none", color: "#94A3B8", fontSize: 14 }}>← Back</button>
-        <Logo height={30} />
+      {/* Header */}
+      <div style={{ padding: "16px 20px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <button onClick={onBack} style={{ background: "none", color: "#94A3B8", fontFamily: "'Anton',sans-serif", fontSize: 13, letterSpacing: ".5px" }}>← BACK</button>
         <div style={{ width: 48 }} />
       </div>
-      <div style={{ flex: 1, padding: mobile ? "24px 20px 40px" : "32px 24px", maxWidth: 460, margin: "0 auto", width: "100%" }}>
-        <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 32 : 40, marginBottom: 6 }}>🔥 DEBATE MODE</h1>
-        <p style={{ color: "#64748B", fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>Same 15 questions, everyone plays. Compare results live.</p>
-        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-          {["host", "join"].map(t => (
-            <button key={t} onClick={() => { setTab(t); setError(""); }}
-              style={{ flex: 1, padding: "12px 0", borderRadius: 10, background: tab === t ? "#1A56DB" : "#1A1D2E", border: tab === t ? "none" : "1px solid #252840", color: tab === t ? "#fff" : "#64748B", fontFamily: "'Anton',sans-serif", fontSize: 15, letterSpacing: 1 }}>
-              {t === "host" ? "CREATE ROOM" : "JOIN ROOM"}
-            </button>
-          ))}
+
+      <div style={{ flex: 1, padding: mobile ? "20px 20px 40px" : "24px 24px", maxWidth: 460, margin: "0 auto", width: "100%" }}>
+        {/* Big logo */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+          <Logo height={mobile ? 90 : 110} />
         </div>
+
+        <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 30 : 38, marginBottom: 6 }}>🎙️ DEBATE MODE</h1>
+        <p style={{ color: "#64748B", fontSize: 14, lineHeight: 1.6, marginBottom: 22 }}>Same 15 questions, everyone plays. Compare results live.</p>
+
+        {/* Tab buttons — styled like home CTAs */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+          <button onClick={() => { setTab("host"); setError(""); }}
+            style={{ flex: 1, height: 52, borderRadius: 12, position: "relative", overflow: "hidden", fontFamily: "'Anton',sans-serif", fontSize: 15, letterSpacing: 1, color: "#fff", border: "none",
+              background: tab === "host" ? "linear-gradient(90deg,#1A56DB 50%,#C81E1E 50%)" : "#1A1D2E",
+              boxShadow: tab === "host" ? "0 4px 20px rgba(26,86,219,.25), 0 4px 20px rgba(200,30,30,.15)" : "none" }}>
+            {tab === "host" && <span style={{ position: "absolute", left: "50%", top: "20%", bottom: "20%", width: 2, background: "rgba(255,255,255,0.2)", transform: "translateX(-50%)" }} />}
+            <span style={{ color: tab === "host" ? "#fff" : "#64748B" }}>CREATE ROOM</span>
+          </button>
+          <button onClick={() => { setTab("join"); setError(""); }}
+            className={tab === "join" ? "debate-btn" : ""}
+            style={{ flex: 1, height: 52, borderRadius: 12, fontFamily: "'Anton',sans-serif", fontSize: 15, letterSpacing: 1,
+              background: tab === "join" ? "rgba(200,30,30,.08)" : "#1A1D2E",
+              color: tab === "join" ? "#F87171" : "#64748B",
+              border: tab === "join" ? "none" : "1px solid #252840" }}>
+            JOIN ROOM
+          </button>
+        </div>
+
         <div style={{ background: "#1A1D2E", borderRadius: 14, padding: 22 }}>
           <label style={{ display: "block", marginBottom: 14 }}>
             <div style={{ color: "#64748B", fontSize: 11, fontFamily: "'DM Mono',monospace", marginBottom: 6 }}>YOUR NAME</div>
@@ -964,7 +982,10 @@ function DebateStartScreen({ onBack, onHostGame, onJoinGame }) {
           )}
           {error && <div style={{ color: "#F87171", fontSize: 13, marginBottom: 12 }}>{error}</div>}
           <button onClick={tab === "host" ? handleCreate : handleJoin} disabled={loading}
-            style={{ width: "100%", padding: "15px 0", borderRadius: 10, background: loading ? "#252840" : "linear-gradient(135deg,#1A56DB,#1e40af)", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 18, letterSpacing: 1 }}>
+            style={{ width: "100%", height: 56, borderRadius: 12, position: "relative", overflow: "hidden", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 19, letterSpacing: 1, border: "none",
+              background: loading ? "#252840" : tab === "host" ? "linear-gradient(90deg,#1A56DB 50%,#C81E1E 50%)" : "linear-gradient(135deg,#C81E1E,#991B1B)",
+              boxShadow: loading ? "none" : tab === "host" ? "0 4px 24px rgba(26,86,219,.3), 0 4px 24px rgba(200,30,30,.2)" : "0 4px 20px rgba(200,30,30,.35)" }}>
+            {!loading && tab === "host" && <span style={{ position: "absolute", left: "50%", top: "20%", bottom: "20%", width: 2, background: "rgba(255,255,255,0.2)", transform: "translateX(-50%)" }} />}
             {loading ? "CONNECTING…" : tab === "host" ? "CREATE ROOM" : "JOIN GAME"}
           </button>
         </div>
