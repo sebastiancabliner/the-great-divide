@@ -485,7 +485,7 @@ function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
           style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 30%", filter: "brightness(1.25)" }}
         />
         {/* Only fade at the very bottom to blend into page background */}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 0%, transparent 72%, #0f1221 100%)" }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 0%, transparent 88%, #0f1221 100%)" }} />
         {/* Logo — centered in hero */}
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: mobile ? 20 : 30 }}>
           <Logo height={mobile ? 170 : 240} />
