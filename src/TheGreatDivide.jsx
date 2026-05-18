@@ -482,26 +482,26 @@ function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
         <button onClick={onDonate}  style={{ background: "rgba(245,158,11,.12)", border: "1px solid rgba(245,158,11,.3)", color: "#F59E0B", fontFamily: "'Anton',sans-serif", fontSize: 13, letterSpacing: ".5px", padding: "7px 16px", borderRadius: 20 }}>☕ SUPPORT</button>
         <button onClick={onContact} style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", color: "#94A3B8", fontFamily: "'Anton',sans-serif", fontSize: 13, letterSpacing: ".5px", padding: "7px 16px", borderRadius: 20 }}>CONTACT</button>
       </div>
-      {/* Hero */}
-      <div style={{ position: "relative", width: "100%", height: mobile ? 260 : 400, overflow: "hidden", flexShrink: 0 }}>
+      {/* Hero — Capitol image extends through H1 */}
+      <div style={{ position: "relative", width: "100%", height: mobile ? 480 : 620, overflow: "hidden", flexShrink: 0 }}>
         <img
           src={mobile ? "/tgd-capitol-hero-mobile.webp" : "/tgd-capitol-hero-desktop.webp"}
           alt="U.S. Capitol"
-          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 25%", filter: "brightness(1.5) contrast(0.92) saturate(1.05)" }}
+          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 30%", filter: "brightness(1.5) contrast(0.92) saturate(1.05)" }}
         />
-        {/* Lift the lower-Capitol shadows with a subtle warm wash, then fade only at the very bottom into page bg */}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 55%, rgba(255,220,180,0.08) 78%, transparent 92%, #0f1221 100%)" }} />
-        {/* Logo — centered in hero */}
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: mobile ? 20 : 30 }}>
+        {/* Warm lift on lower Capitol + gradual darken behind H1 for legibility, then fade into bg */}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 45%, rgba(255,220,180,0.06) 60%, rgba(15,18,33,0.35) 82%, rgba(15,18,33,0.85) 96%, #0f1221 100%)" }} />
+        {/* Logo top, H1 bottom — both over the image */}
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: mobile ? "70px 20px 28px" : "88px 24px 36px" }}>
           <Logo height={mobile ? 170 : 240} />
+          <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 42 : 58, letterSpacing: ".5px", textAlign: "center", lineHeight: 1.05, color: "#F8FAFC", textShadow: "0 2px 16px rgba(0,0,0,0.75), 0 0 32px rgba(0,0,0,0.55)", margin: 0 }}>
+            HOW BIASED<br />ARE YOU?
+          </h1>
         </div>
       </div>
 
-      {/* Content — tight below hero */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: mobile ? "8px 20px 40px" : "12px 24px 60px", maxWidth: 520, margin: "0 auto", width: "100%" }}>
-        <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 40 : 54, letterSpacing: ".5px", textAlign: "center", lineHeight: 1.05, marginBottom: 10 }}>
-          HOW BIASED<br />ARE YOU?
-        </h1>
+      {/* Content — description + CTAs on plain bg */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: mobile ? "20px 20px 40px" : "26px 24px 60px", maxWidth: 520, margin: "0 auto", width: "100%" }}>
         <p style={{ color: "#94A3B8", fontSize: 15, textAlign: "center", lineHeight: 1.6, marginBottom: 32, maxWidth: 380 }}>
           15 questions. No filter. Discover your political bias and your <strong style={{ color: "#F59E0B" }}>Divide-O-Meter</strong> score.
         </p>
