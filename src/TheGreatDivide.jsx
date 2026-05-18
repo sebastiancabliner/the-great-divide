@@ -76,9 +76,9 @@ const KNOWLEDGE_BADGES = [
 ];
 
 function getKnowledgeTier(facts) {
-  if (facts >= 12) return 2; // HIGH
-  if (facts >= 8)  return 1; // MED
-  return 0;                  // LOW
+  if (facts >= 10) return 2; // HIGH (≥83%)
+  if (facts >= 6)  return 1; // MED  (50–75%)
+  return 0;                  // LOW  (<50%)
 }
 
 function getKnowledgeBadge(gauge, facts) {
@@ -98,8 +98,8 @@ const TIPS = [
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function pickQuestions() {
-  const TOTAL   = 15;
-  const TARGETS = { DEM: 3, PROG: 2, CON: 3, LIB: 2, POP: 2, NEU: 3 };
+  const TOTAL   = 12;
+  const TARGETS = { DEM: 2, PROG: 2, CON: 2, LIB: 2, POP: 2, NEU: 2 };
   const shuffled = [...Q].sort(() => Math.random() - 0.5);
   const counts   = { DEM: 0, PROG: 0, CON: 0, LIB: 0, POP: 0, NEU: 0 };
   const picked   = [];
@@ -227,7 +227,7 @@ async function buildShareCanvas(gauge, result, stats, knowledge) {
 
   // Stats
   ctx.fillStyle = "#94A3B8"; ctx.font = "22px sans-serif"; ctx.textAlign = "center";
-  ctx.fillText(`Facts ${stats.factsCorrect}/15  •  Score ${stats.score} pts`, W / 2, 570);
+  ctx.fillText(`Facts ${stats.factsCorrect}/12  •  Score ${stats.score} pts`, W / 2, 570);
 
   // URL
   ctx.fillStyle = "#F59E0B"; ctx.font = "bold 28px sans-serif";
@@ -568,7 +568,7 @@ function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
       {/* Content — description + CTAs on plain bg */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: mobile ? "20px 20px 40px" : "26px 24px 60px", maxWidth: 520, margin: "0 auto", width: "100%" }}>
         <p style={{ color: "#94A3B8", fontSize: 15, textAlign: "center", lineHeight: 1.6, marginBottom: 32, maxWidth: 380 }}>
-          15 questions. No filter. Discover your political bias and your <strong style={{ color: "#F59E0B" }}>Divide-O-Meter</strong> score.
+          12 questions. No filter. Discover your political bias and your <strong style={{ color: "#F59E0B" }}>Divide-O-Meter</strong> score.
         </p>
 
         {/* Split CTA — blue left / red right */}
@@ -608,7 +608,7 @@ function HowToPlayScreen({ onBack, onPlay }) {
   const steps = [
     { icon: "📋", title: "Part A — Fact Check",   desc: "Every question starts with a factual statement about U.S. politics. Answer correctly and earn 15 points." },
     { icon: "🧠", title: "Part B — Bias Reveal",  desc: "Then comes the twist: a follow-up that reveals your political lean. There's no wrong answer — just +15 pts for engaging." },
-    { icon: "📊", title: "Your Divide-O-Meter",   desc: "After 15 questions, your answers map to a political spectrum from far-left to far-right. One of 7 archetypes awaits." },
+    { icon: "📊", title: "Your Divide-O-Meter",   desc: "After 12 questions, your answers map to a political spectrum from far-left to far-right. One of 7 archetypes awaits." },
     { icon: "📤", title: "Challenge Your Friends", desc: "Share your result and see where they land. Use Debate Mode to play simultaneously and compare live." },
   ];
 
@@ -636,7 +636,7 @@ function HowToPlayScreen({ onBack, onPlay }) {
         <div style={{ background: "#252840", borderRadius: 12, padding: 18, textAlign: "center", marginBottom: 28 }}>
           <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 11, marginBottom: 4 }}>MAX SCORE</div>
           <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 34, color: "#F59E0B" }}>450 pts</div>
-          <div style={{ color: "#475569", fontSize: 11, marginTop: 2 }}>15 questions × 30 pts each</div>
+          <div style={{ color: "#475569", fontSize: 11, marginTop: 2 }}>12 questions × 30 pts each</div>
         </div>
         <button onClick={onPlay} style={{ width: "100%", padding: "17px 0", borderRadius: 12, background: "linear-gradient(135deg,#1A56DB,#1e40af)", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 21, letterSpacing: 1 }}>
           LET'S PLAY
@@ -895,15 +895,15 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
         <div style={{ background: "#1A1D2E", borderRadius: 14, padding: "14px 16px", marginBottom: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
             <span style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 2 }}>KNOWLEDGE LEVEL</span>
-            <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 18, color: "#F59E0B" }}>{stats.factsCorrect}/15</span>
+            <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 18, color: "#F59E0B" }}>{stats.factsCorrect}/12</span>
           </div>
           <div style={{ display: "flex", gap: 3, marginBottom: 6 }}>
-            {Array.from({ length: 15 }, (_, i) => {
+            {Array.from({ length: 12 }, (_, i) => {
               const filled = i < stats.factsCorrect;
               return (
                 <div key={i} style={{
                   flex: 1, height: 14, borderRadius: 3,
-                  background: filled ? `hsl(${30 + i * 4}, 85%, ${48 + i * 0.6}%)` : "#252840",
+                  background: filled ? `hsl(${30 + i * 5}, 85%, ${48 + i * 0.8}%)` : "#252840",
                   transition: "background .3s"
                 }} />
               );
@@ -1044,7 +1044,7 @@ function DebateStartScreen({ onBack, onHostGame, onJoinGame }) {
         </div>
 
         <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 30 : 38, marginBottom: 6 }}>🎙️ DEBATE MODE</h1>
-        <p style={{ color: "#64748B", fontSize: 14, lineHeight: 1.6, marginBottom: 22 }}>Same 15 questions, everyone plays. Compare results live.</p>
+        <p style={{ color: "#64748B", fontSize: 14, lineHeight: 1.6, marginBottom: 22 }}>Same 12 questions, everyone plays. Compare results live.</p>
 
         {/* Tab buttons — styled like home CTAs */}
         <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
