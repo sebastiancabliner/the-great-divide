@@ -97,6 +97,26 @@ const TIPS = [
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// Shuffle each question's answer options so the bias/correct-answer position
+// stops being predictable (raw JSON has D=LIB 72% and Part-A correct=B 61%).
+function shuffleQuestion(q) {
+  const aN     = q.A.opts.length;
+  const aOrder = Array.from({ length: aN }, (_, i) => i).sort(() => Math.random() - 0.5);
+  const aOpts  = aOrder.map(i => q.A.opts[i]);
+  const aAns   = aOrder.indexOf(q.A.ans);
+
+  const bN     = q.B.opts.length;
+  const bOrder = Array.from({ length: bN }, (_, i) => i).sort(() => Math.random() - 0.5);
+  const bOpts  = bOrder.map(i => q.B.opts[i]);
+  const bBias  = bOrder.map(i => q.B.bias[i]);
+
+  return {
+    ...q,
+    A: { ...q.A, opts: aOpts, ans: aAns },
+    B: { ...q.B, opts: bOpts, bias: bBias },
+  };
+}
+
 function pickQuestions() {
   const TOTAL   = 12;
   const TARGETS = { DEM: 2, PROG: 2, CON: 2, LIB: 2, POP: 2, NEU: 2 };
@@ -114,12 +134,12 @@ function pickQuestions() {
     if (picked.length >= TOTAL) break;
     if (!usedIds.has(q.id)) picked.push(q);
   }
-  return picked.slice(0, TOTAL).sort(() => Math.random() - 0.5);
+  return picked.slice(0, TOTAL).sort(() => Math.random() - 0.5).map(shuffleQuestion);
 }
 
 const Q_MAP = Object.fromEntries(Q.map(q => [q.id, q]));
 function pickQuestionsById(ids) {
-  return ids.map(id => Q_MAP[id]).filter(Boolean);
+  return ids.map(id => Q_MAP[id]).filter(Boolean).map(shuffleQuestion);
 }
 
 function calcDivideOMeter(answers) {
