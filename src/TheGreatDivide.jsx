@@ -845,7 +845,8 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
   const result  = getResult(gauge);
   const stats   = calcStats(answers);
   const knowledge = getKnowledgeBadge(gauge, stats.factsCorrect);
-  const [showShare, setShowShare] = useState(false);
+  const [showShare,    setShowShare]    = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   useEffect(() => {
     trackEvent("game_complete", { gauge, archetype: result.label, score: stats.score, knowledge_tier: knowledge.tier, knowledge_label: knowledge.label });
@@ -948,33 +949,11 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
           <span style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 22 : 26, color: "#F59E0B", letterSpacing: 1 }}>{scoreStr} <span style={{ fontSize: 12, color: "#475569" }}>PTS</span></span>
         </div>
 
-        {/* Bias breakdown */}
-        {biasEntries.length > 0 && (
-          <div style={{ background: "#1A1D2E", borderRadius: 12, padding: "14px 16px", marginBottom: 12 }}>
-            <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 2, marginBottom: 10 }}>BIAS BREAKDOWN</div>
-            {biasEntries.map(([bias, count]) => {
-              const meta = BIAS_META[bias] ?? { label: bias, color: "#64748B" };
-              const pct  = Math.round((count / answers.length) * 100);
-              return (
-                <div key={bias} style={{ marginBottom: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                    <span style={{ fontSize: 12, color: meta.color }}>{meta.label}</span>
-                    <span style={{ fontSize: 11, color: "#64748B", fontFamily: "'DM Mono',monospace" }}>{count}× ({pct}%)</span>
-                  </div>
-                  <div style={{ height: 4, background: "#252840", borderRadius: 2 }}>
-                    <div style={{ height: "100%", width: `${pct}%`, background: meta.color, borderRadius: 2 }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Donate card with coffee mug */}
-        <div style={{ background: "#1A1D2E", borderRadius: 16, padding: "18px 18px 18px 18px", marginBottom: 12, border: "1px solid #252840", position: "relative", overflow: "hidden" }}>
+        {/* Donate card with coffee mug — surfaced ABOVE bias breakdown so it's visible without scrolling */}
+        <div style={{ background: "linear-gradient(135deg, #1A1D2E 0%, #1F2138 100%)", borderRadius: 16, padding: "20px 20px", marginBottom: 12, border: "1.5px solid #F59E0B30", position: "relative", overflow: "hidden", boxShadow: "0 4px 30px rgba(245,158,11,0.08)" }}>
           <img src="/cafecito-logo.webp" alt=""
-            style={{ position: "absolute", right: -10, top: -8, height: mobile ? 170 : 200, pointerEvents: "none" }} />
-          <div style={{ paddingRight: mobile ? 130 : 160 }}>
+            style={{ position: "absolute", right: mobile ? -16 : -10, top: mobile ? -10 : -6, height: mobile ? 220 : 250, pointerEvents: "none", filter: "drop-shadow(0 6px 18px rgba(0,0,0,0.4))" }} />
+          <div style={{ paddingRight: mobile ? 150 : 190 }}>
             <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 15, marginBottom: 5, lineHeight: 1.2 }}>KEEP THE<br/>DIVIDE ALIVE</div>
             <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
               {[["$3","Coffee"],["$6","Double"],["$9","Mega"]].map(([amt, lbl]) => (
@@ -993,6 +972,36 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
             </a>
           </div>
         </div>
+
+        {/* Bias breakdown — collapsible to keep the page short */}
+        {biasEntries.length > 0 && (
+          <div style={{ background: "#1A1D2E", borderRadius: 12, marginBottom: 12, overflow: "hidden" }}>
+            <button onClick={() => setShowBreakdown(s => !s)}
+              style={{ width: "100%", padding: "14px 16px", background: "transparent", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", color: "#F8FAFC" }}>
+              <span style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 2 }}>BIAS BREAKDOWN</span>
+              <span style={{ color: "#94A3B8", fontSize: 12, transition: "transform .2s", transform: showBreakdown ? "rotate(180deg)" : "rotate(0deg)", display: "inline-block" }}>▾</span>
+            </button>
+            {showBreakdown && (
+              <div className="fade-in" style={{ padding: "0 16px 14px" }}>
+                {biasEntries.map(([bias, count]) => {
+                  const meta = BIAS_META[bias] ?? { label: bias, color: "#64748B" };
+                  const pct  = Math.round((count / answers.length) * 100);
+                  return (
+                    <div key={bias} style={{ marginBottom: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                        <span style={{ fontSize: 12, color: meta.color }}>{meta.label}</span>
+                        <span style={{ fontSize: 11, color: "#64748B", fontFamily: "'DM Mono',monospace" }}>{count}× ({pct}%)</span>
+                      </div>
+                      <div style={{ height: 4, background: "#252840", borderRadius: 2 }}>
+                        <div style={{ height: "100%", width: `${pct}%`, background: meta.color, borderRadius: 2 }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Action buttons */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
