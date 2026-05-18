@@ -29,6 +29,64 @@ const ARCHETYPES = [
   { min: 86, max: 100, icon: "🐘", label: "The MAGA Loyalist",           color: "#B91C1C", avatar: "/avatar-tgd-far-right.webp",  desc: "You're all-in on the populist right. You distrust institutions, love America loud, and don't apologize for it." },
 ];
 
+// Knowledge tier badges — one trio (LOW/MED/HIGH) per bias archetype, indexed to match ARCHETYPES above.
+const KNOWLEDGE_BADGES = [
+  // 0 — Progressive Firebrand
+  [
+    { tier: "LOW",  icon: "🔥", label: "The Vibes Revolutionary", quote: "You'll smash the system right after you find your other AirPod. Big heart, light receipts." },
+    { tier: "MED",  icon: "📣", label: "The Committed Activist",  quote: "You march, you sign, you donate — and sometimes you even read the bill. Mostly." },
+    { tier: "HIGH", icon: "📕", label: "The Theory Head",         quote: "You can cite Marx, Marcuse, and the latest Jacobin in one breath. Terrifying at dinner parties." },
+  ],
+  // 1 — Liberal Democrat
+  [
+    { tier: "LOW",  icon: "☕", label: "The MSNBC Sleeper",       quote: "You catch the vibes, miss the policy. You're on the right side — just don't ask which bill." },
+    { tier: "MED",  icon: "📰", label: "The Reliable Blue Voter", quote: "You know your senator, your governor, and roughly when the midterms are. You're the backbone." },
+    { tier: "HIGH", icon: "🧠", label: "The Enlightened Liberal", quote: "You've read the studies, cited the data, and still lost Thanksgiving. Everyone wants you on their trivia team." },
+  ],
+  // 2 — Center-Left Pragmatist
+  [
+    { tier: "LOW",  icon: "🍵", label: "The Reluctant Liberal",      quote: "You lean left mostly out of habit. Couldn't name three policy details if rent depended on it." },
+    { tier: "MED",  icon: "🍃", label: "The Thoughtful Progressive", quote: "You support change — within reason, with a spreadsheet, and ideally bipartisan." },
+    { tier: "HIGH", icon: "📊", label: "The Wonk's Wonk",            quote: "You live for incremental reform and footnoted policy briefs. You listen to The Daily on 1.5x." },
+  ],
+  // 3 — Independent
+  [
+    { tier: "LOW",  icon: "🌀", label: "The Politically Adrift",  quote: "You vote 'whoever' and skip every debate. Honestly? Refreshing. The political class hasn't earned your attention." },
+    { tier: "MED",  icon: "🤷", label: "The Everyday Centrist",   quote: "You roll your eyes at both sides and somehow keep your friends. The middle isn't dead — you're just the last one in it." },
+    { tier: "HIGH", icon: "🦉", label: "The Wise Independent",    quote: "You know too much to pick a team. Both sides find you insufferable — which usually means you're right." },
+  ],
+  // 4 — Center-Right Moderate
+  [
+    { tier: "LOW",  icon: "🪑", label: "The Country Club Conservative", quote: "You vote red because dad did. You'll figure out which red eventually." },
+    { tier: "MED",  icon: "🤝", label: "The Reasonable Republican",     quote: "You believe in fiscal sanity, polite debate, and the sacred institution of brunch." },
+    { tier: "HIGH", icon: "📈", label: "The WSJ Reader",                quote: "You debate tax brackets recreationally and own at least one good suit. Restrained, informed, dangerous." },
+  ],
+  // 5 — Conservative
+  [
+    { tier: "LOW",  icon: "🇺🇸", label: "The Loud Patriot",           quote: "You love your country louder than you read about it. Big flag, light footnotes." },
+    { tier: "MED",  icon: "⚙️", label: "The Steady Conservative",     quote: "Low taxes, defined borders, no nonsense. You're not loud — you're consistent." },
+    { tier: "HIGH", icon: "📚", label: "The Principled Conservative", quote: "You quote Burke before lunch and Buckley after. The conservative who actually read the Federalist Papers." },
+  ],
+  // 6 — MAGA Loyalist
+  [
+    { tier: "LOW",  icon: "📺", label: "The Outrage Patriot",       quote: "Big flag, big feelings, fuzzy facts. You might think the filibuster is a fish — but your conviction is bulletproof." },
+    { tier: "MED",  icon: "🎙️", label: "The Talk Radio Faithful",   quote: "You catch every clip, never miss the segment, and somehow know less than when you started. But you're loud about it." },
+    { tier: "HIGH", icon: "🏛️", label: "The Movement Strategist",   quote: "You've memorized the Heritage playbook and can name every justice's clerk. Bring backup to the debate." },
+  ],
+];
+
+function getKnowledgeTier(facts) {
+  if (facts >= 12) return 2; // HIGH
+  if (facts >= 8)  return 1; // MED
+  return 0;                  // LOW
+}
+
+function getKnowledgeBadge(gauge, facts) {
+  const archetypeIndex = ARCHETYPES.findIndex(a => gauge >= a.min && gauge <= a.max);
+  const idx            = archetypeIndex >= 0 ? archetypeIndex : 3;
+  return KNOWLEDGE_BADGES[idx][getKnowledgeTier(facts)];
+}
+
 const TIPS = [
   "There are no right answers in Part B. We reveal your bias, not judge you.",
   "Your political bias shows in how you interpret facts, not just what you believe.",
@@ -110,7 +168,7 @@ function trackEvent(name, params = {}) {
   try { if (typeof gtag === "function") gtag("event", name, params); } catch (_) {}
 }
 
-async function buildShareCanvas(gauge, result, stats) {
+async function buildShareCanvas(gauge, result, stats, knowledge) {
   const W = 1200, H = 630;
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
@@ -161,12 +219,19 @@ async function buildShareCanvas(gauge, result, stats) {
   ctx.textAlign = "left";  ctx.fillText("← LEFT", bX, bY + bH + 32);
   ctx.textAlign = "right"; ctx.fillText("RIGHT →", bX + bW, bY + bH + 32);
 
-  ctx.fillStyle = "#94A3B8"; ctx.font = "26px sans-serif"; ctx.textAlign = "center";
-  ctx.fillText(`Score ${stats.score} pts  •  Facts ${stats.factsCorrect}/15`, W / 2, 555);
+  // Knowledge badge
+  if (knowledge) {
+    ctx.fillStyle = "#F59E0B"; ctx.font = "bold 30px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(`${knowledge.icon}  ${knowledge.label.toUpperCase()}`, W / 2, 530);
+  }
+
+  // Stats
+  ctx.fillStyle = "#94A3B8"; ctx.font = "22px sans-serif"; ctx.textAlign = "center";
+  ctx.fillText(`Facts ${stats.factsCorrect}/15  •  Score ${stats.score} pts`, W / 2, 570);
 
   // URL
-  ctx.fillStyle = "#F59E0B"; ctx.font = "bold 30px sans-serif";
-  ctx.fillText(SITE_URL, W / 2, 600);
+  ctx.fillStyle = "#F59E0B"; ctx.font = "bold 28px sans-serif";
+  ctx.fillText(SITE_URL, W / 2, 608);
 
   return canvas;
 }
@@ -260,12 +325,12 @@ function DivideOMeterGauge({ gauge, size = 300, showLabel = false }) {
 
 // ─── ShareSheet ───────────────────────────────────────────────────────────────
 
-function ShareSheet({ gauge, result, stats, onClose }) {
+function ShareSheet({ gauge, result, stats, knowledge, onClose }) {
   const [copied,    setCopied]    = useState(false);
   const [generating, setGenerating] = useState(false);
   const mobile = window.innerWidth < 640;
   const dir    = getDirectionLabel(gauge);
-  const text   = `I took The Great Divide and scored ${gauge}% — ${dir}. My archetype: ${result.label}. What's yours?`;
+  const text   = `I took The Great Divide and scored ${gauge}% — ${dir}. I'm ${knowledge?.label || result.label}. What's yours?`;
   const url    = SITE_URL;
   const full   = `${text} ${url}`;
 
@@ -281,7 +346,7 @@ function ShareSheet({ gauge, result, stats, onClose }) {
   async function handleDownload() {
     setGenerating(true);
     try {
-      const canvas = await buildShareCanvas(gauge, result, stats);
+      const canvas = await buildShareCanvas(gauge, result, stats, knowledge);
       canvas.toBlob(blob => {
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
@@ -759,10 +824,11 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
   const gauge   = calcDivideOMeter(answers);
   const result  = getResult(gauge);
   const stats   = calcStats(answers);
+  const knowledge = getKnowledgeBadge(gauge, stats.factsCorrect);
   const [showShare, setShowShare] = useState(false);
 
   useEffect(() => {
-    trackEvent("game_complete", { gauge, archetype: result.label, score: stats.score });
+    trackEvent("game_complete", { gauge, archetype: result.label, score: stats.score, knowledge_tier: knowledge.tier, knowledge_label: knowledge.label });
   }, []);
 
   const biasCounts = {};
@@ -813,19 +879,45 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
           <span style={{ color: result.color, fontSize: 22, lineHeight: 0, verticalAlign: "middle", marginLeft: 8 }}>❞</span>
         </div>
 
-        {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
-          {[
-            { label: "FACTS", value: `${stats.factsCorrect}/15`, sub: `${Math.round((stats.factsCorrect / 15) * 100)}%` },
-            { label: "BIAS",  value: `${stats.biasAnswered}/15`, sub: "100%" },
-            { label: "SCORE", value: scoreStr,                   sub: "POINTS" },
-          ].map(({ label, value, sub }) => (
-            <div key={label} style={{ background: "#1A1D2E", borderRadius: 12, padding: "14px 8px", textAlign: "center" }}>
-              <div style={{ color: "#64748B", fontSize: 10, fontFamily: "'DM Mono',monospace", letterSpacing: 1, marginBottom: 4 }}>{label}</div>
-              <div style={{ fontFamily: "'Anton',sans-serif", fontSize: label === "SCORE" ? (mobile ? 18 : 22) : 24, color: "#F59E0B" }}>{value}</div>
-              <div style={{ color: "#475569", fontSize: 11, fontFamily: "'DM Mono',monospace" }}>{sub}</div>
+        {/* Knowledge badge — flavors the archetype based on Part A correct answers */}
+        <div style={{ background: "#1A1D2E", borderRadius: 14, padding: "14px 16px", marginBottom: 12, border: "1.5px solid #F59E0B33" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <span style={{ fontSize: 24 }}>{knowledge.icon}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: 2, marginBottom: 1 }}>KNOWLEDGE — {knowledge.tier}</div>
+              <div style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 17 : 19, color: "#F59E0B", letterSpacing: ".5px", lineHeight: 1.1 }}>{knowledge.label.toUpperCase()}</div>
             </div>
-          ))}
+          </div>
+          <p style={{ color: "#94A3B8", fontSize: 13, lineHeight: 1.6, margin: 0 }}>{knowledge.quote}</p>
+        </div>
+
+        {/* Knowledge gauge — horizontal 15-segment bar parallel to Divide-O-Meter */}
+        <div style={{ background: "#1A1D2E", borderRadius: 14, padding: "14px 16px", marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+            <span style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 2 }}>KNOWLEDGE LEVEL</span>
+            <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 18, color: "#F59E0B" }}>{stats.factsCorrect}/15</span>
+          </div>
+          <div style={{ display: "flex", gap: 3, marginBottom: 6 }}>
+            {Array.from({ length: 15 }, (_, i) => {
+              const filled = i < stats.factsCorrect;
+              return (
+                <div key={i} style={{
+                  flex: 1, height: 14, borderRadius: 3,
+                  background: filled ? `hsl(${30 + i * 4}, 85%, ${48 + i * 0.6}%)` : "#252840",
+                  transition: "background .3s"
+                }} />
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "'DM Mono',monospace", fontSize: 9, color: "#475569", letterSpacing: 1 }}>
+            <span>LOW</span><span>MEDIUM</span><span>HIGH</span>
+          </div>
+        </div>
+
+        {/* Score pill */}
+        <div style={{ background: "#1A1D2E", borderRadius: 12, padding: "12px 16px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 2 }}>FINAL SCORE</span>
+          <span style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 22 : 26, color: "#F59E0B", letterSpacing: 1 }}>{scoreStr} <span style={{ fontSize: 12, color: "#475569" }}>PTS</span></span>
         </div>
 
         {/* Bias breakdown */}
@@ -892,7 +984,7 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
       </div>
 
       {showShare && (
-        <ShareSheet gauge={gauge} result={result} stats={stats} onClose={() => setShowShare(false)} />
+        <ShareSheet gauge={gauge} result={result} stats={stats} knowledge={knowledge} onClose={() => setShowShare(false)} />
       )}
     </div>
   );
