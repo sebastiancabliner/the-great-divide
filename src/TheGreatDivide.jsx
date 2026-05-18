@@ -858,8 +858,8 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "16px 20px 0", display: "flex", justifyContent: "center" }}>
-        <Logo height={32} />
+      <div style={{ padding: "18px 20px 4px", display: "flex", justifyContent: "center" }}>
+        <Logo height={52} />
       </div>
 
       <div style={{ flex: 1, padding: mobile ? "14px 18px 40px" : "20px 24px 60px", maxWidth: 480, margin: "0 auto", width: "100%" }}>
@@ -881,6 +881,14 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
           <span style={{ color: "#1A56DB", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 600 }}>← LEFT</span>
           <span style={{ color: "#C81E1E", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 600 }}>RIGHT →</span>
         </div>
+
+        {/* Avatar */}
+        {result.avatar && (
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+            <img src={result.avatar} alt={result.label}
+              style={{ width: mobile ? 120 : 140, height: mobile ? 120 : 140, borderRadius: "50%", objectFit: "cover", border: `3px solid ${result.color}80`, boxShadow: `0 0 28px ${result.color}40`, background: "#1A1D2E" }} />
+          </div>
+        )}
 
         {/* Archetype pill */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
@@ -965,8 +973,8 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
         {/* Donate card with coffee mug */}
         <div style={{ background: "#1A1D2E", borderRadius: 16, padding: "18px 18px 18px 18px", marginBottom: 12, border: "1px solid #252840", position: "relative", overflow: "hidden" }}>
           <img src="/cafecito-logo.webp" alt=""
-            style={{ position: "absolute", right: -6, top: -6, height: mobile ? 120 : 140, pointerEvents: "none", opacity: 0.95 }} />
-          <div style={{ paddingRight: mobile ? 96 : 116 }}>
+            style={{ position: "absolute", right: -10, top: -8, height: mobile ? 170 : 200, pointerEvents: "none" }} />
+          <div style={{ paddingRight: mobile ? 130 : 160 }}>
             <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 15, marginBottom: 5, lineHeight: 1.2 }}>KEEP THE<br/>DIVIDE ALIVE</div>
             <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
               {[["$3","Coffee"],["$6","Double"],["$9","Mega"]].map(([amt, lbl]) => (
