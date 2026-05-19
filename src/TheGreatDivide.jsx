@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef } from "react";
+import * as Sentry from "@sentry/react";
 import Q from "../tgd-questions.json";
+
+function captureError(context, err) {
+  try { Sentry.captureException(err, { tags: { context } }); } catch (_) {}
+}
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -499,12 +504,13 @@ function ContactModal({ onClose }) {
       const res = await fetch(`${PROXY_URL}/contact`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), message: message.trim() }),
+        body: JSON.stringify({ name: name.trim().slice(0, 80), email: email.trim().slice(0, 120), message: message.trim().slice(0, 2000) }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(`Contact endpoint ${res.status}`);
       setStatus("success");
       trackEvent("contact_sent");
-    } catch (_) {
+    } catch (err) {
+      captureError("contact_form", err);
       setStatus("error");
     }
   }
@@ -528,26 +534,29 @@ function ContactModal({ onClose }) {
           <div style={{ textAlign: "center", padding: "24px 0" }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>✉️</div>
             <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 20, marginBottom: 8 }}>MESSAGE SENT!</div>
-            <div style={{ color: "#94A3B8", fontSize: 14 }}>We'll get back to you at <strong style={{ color: "#F8FAFC" }}>hello@thegreatdivide.xyz</strong></div>
+            <div style={{ color: "#94A3B8", fontSize: 14 }}>We'll get back to you at <strong style={{ color: "#F8FAFC" }}>playthegreatdivide@gmail.com</strong></div>
             <button onClick={onClose} style={{ marginTop: 20, padding: "12px 32px", borderRadius: 10, background: "#1A56DB", color: "#fff", fontWeight: 600 }}>Close</button>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" required style={inputStyle} />
-              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Your email" type="email" required style={inputStyle} />
-              <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message" required rows={4}
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" required maxLength={80} style={inputStyle} />
+              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Your email" type="email" required maxLength={120} style={inputStyle} />
+              <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message" required rows={4} maxLength={2000}
                 style={{ ...inputStyle, resize: "vertical", minHeight: 100 }} />
             </div>
             {status === "error" && (
               <div style={{ color: "#F87171", fontSize: 13, marginBottom: 12 }}>
-                Something went wrong. Email us directly at hello@thegreatdivide.xyz
+                Something went wrong. Email us directly at playthegreatdivide@gmail.com
               </div>
             )}
             <button type="submit" disabled={status === "sending"}
               style={{ width: "100%", padding: "14px 0", borderRadius: 10, background: status === "sending" ? "#252840" : "linear-gradient(135deg,#1A56DB,#1e40af)", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 18, letterSpacing: 1 }}>
               {status === "sending" ? "SENDING…" : "SEND MESSAGE"}
             </button>
+            <div style={{ marginTop: 10, textAlign: "center", color: "#475569", fontSize: 11 }}>
+              By sending, you agree to our <a href="/privacy" target="_blank" rel="noopener" style={{ color: "#64748B" }}>privacy policy</a>.
+            </div>
           </form>
         )}
       </div>
@@ -616,6 +625,7 @@ function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
       <div style={{ display: "flex", justifyContent: "center", gap: 24, padding: "14px 24px", borderTop: "1px solid #1A1D2E" }}>
         <button onClick={onDonate}  style={{ background: "none", color: "#F59E0B", fontFamily: "'Anton',sans-serif", fontSize: 12, letterSpacing: ".5px" }}>☕ SUPPORT</button>
         <button onClick={onContact} style={{ background: "none", color: "#475569", fontFamily: "'Anton',sans-serif", fontSize: 12, letterSpacing: ".5px" }}>CONTACT</button>
+        <a href="/privacy" style={{ background: "none", color: "#475569", fontFamily: "'Anton',sans-serif", fontSize: 12, letterSpacing: ".5px", textDecoration: "none" }}>PRIVACY</a>
       </div>
     </div>
   );
