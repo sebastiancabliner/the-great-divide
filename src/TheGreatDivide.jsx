@@ -1491,47 +1491,190 @@ function DebatePlayerScreen({ roomInfo, onClose }) {
 // ─── DebateResultsScreen ──────────────────────────────────────────────────────
 
 function DebateResultsScreen({ results, onClose }) {
-  const mobile  = window.innerWidth < 640;
+  const mobile = window.innerWidth < 640;
+  const [shareGenerating, setShareGenerating] = useState(false);
+
   if (!results?.players) return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 30, marginBottom: 16 }}>GAME OVER</div>
       <button onClick={onClose} style={{ background: "none", color: "#94A3B8", fontSize: 14, textDecoration: "underline" }}>Back to Home</button>
     </div>
   );
+
   const sorted = [...results.players].sort((a, b) => b.score - a.score);
+  const winner = sorted[0];
+  const winnerResult = getResult(winner.gauge ?? 50);
+
+  async function handleShare() {
+    setShareGenerating(true);
+    try {
+      const canvas = await buildDebateShareCanvas(sorted);
+      canvas.toBlob(async blob => {
+        const file = new File([blob], "tgd-debate-results.png", { type: "image/png" });
+        if (navigator.canShare?.({ files: [file] })) {
+          try { await navigator.share({ files: [file], title: "The Great Divide — Debate Results", text: "Who's the most biased? We just played and the results are in." }); trackEvent("share_success", { method: "debate_native" }); }
+          catch (_) {}
+        } else {
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "tgd-debate-results.png";
+          a.click();
+          URL.revokeObjectURL(a.href);
+          trackEvent("share_success", { method: "debate_download" });
+        }
+        setShareGenerating(false);
+      }, "image/png");
+    } catch (err) { captureError("debate_share", err); setShareGenerating(false); }
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "18px 20px 0", display: "flex", justifyContent: "center" }}><Logo height={34} /></div>
-      <div style={{ flex: 1, padding: mobile ? "24px 20px 40px" : "32px 24px", maxWidth: 460, margin: "0 auto", width: "100%" }}>
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: 2, marginBottom: 6 }}>DEBATE RESULTS</div>
-          <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 28 : 36 }}>WHO'S THE MOST BIASED?</h1>
+      <div style={{ padding: "18px 20px 4px", display: "flex", justifyContent: "center" }}><Logo height={48} /></div>
+
+      <div style={{ flex: 1, padding: mobile ? "14px 18px 40px" : "20px 24px 60px", maxWidth: 480, margin: "0 auto", width: "100%" }}>
+
+        {/* Title */}
+        <div className="fade-in" style={{ textAlign: "center", marginBottom: 18 }}>
+          <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 3, marginBottom: 4 }}>DEBATE RESULTS</div>
+          <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 28 : 36, letterSpacing: 1, lineHeight: 1.05 }}>WHO'S THE MOST BIASED?</h1>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
+
+        {/* Winner spotlight */}
+        {winnerResult.avatar && (
+          <div className="fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 16 }}>
+            <div style={{ position: "relative" }}>
+              <img src={winnerResult.avatar} alt={winnerResult.label}
+                style={{ width: mobile ? 110 : 130, height: mobile ? 110 : 130, borderRadius: "50%", objectFit: "cover", border: `3px solid ${winnerResult.color}90`, boxShadow: `0 0 32px ${winnerResult.color}55`, background: "#1A1D2E" }} />
+              <div style={{ position: "absolute", top: -6, right: -6, fontSize: 34 }}>🥇</div>
+            </div>
+            <div style={{ marginTop: 10, fontFamily: "'Anton',sans-serif", fontSize: mobile ? 24 : 28, letterSpacing: ".5px" }}>{winner.name.toUpperCase()}</div>
+            <div style={{ color: winnerResult.color, fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: 2, marginTop: 2 }}>WINS — {winner.score} PTS</div>
+          </div>
+        )}
+
+        {/* Leaderboard */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
           {sorted.map((player, i) => {
-            const g = player.gauge ?? 50, r = getResult(g);
+            const g     = player.gauge ?? 50;
+            const r     = getResult(g);
+            const facts = player.factsCorrect ?? 0;
+            const kb    = getKnowledgeBadge(g, facts);
+            const medal = ["🥇","🥈","🥉"][i] ?? `${i+1}.`;
             return (
-              <div key={player.name} style={{ background: "#1A1D2E", borderRadius: 12, padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-                <span style={{ fontSize: 20, flexShrink: 0 }}>{["🥇","🥈","🥉"][i] ?? `${i+1}.`}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{player.name}</div>
-                  <div style={{ color: r.color, fontFamily: "'DM Mono',monospace", fontSize: 10 }}>{r.label}</div>
+              <div key={player.name} style={{ background: "#1A1D2E", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, border: i === 0 ? `1.5px solid ${r.color}55` : "1px solid #252840" }}>
+                <span style={{ fontSize: 22, flexShrink: 0, width: 28, textAlign: "center" }}>{medal}</span>
+                {r.avatar && (
+                  <img src={r.avatar} alt="" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", border: `2px solid ${r.color}66`, flexShrink: 0, background: "#252840" }} />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 16, letterSpacing: ".5px", marginBottom: 2 }}>{player.name.toUpperCase()}</div>
+                  <div style={{ color: r.color, fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: 1, marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.label.toUpperCase()}</div>
+                  <div style={{ color: "#94A3B8", fontSize: 11, lineHeight: 1.2 }}>{kb.icon} <span style={{ color: "#F59E0B" }}>{kb.label}</span></div>
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 20, color: "#F59E0B" }}>{player.score ?? 0}</div>
-                  <div style={{ color: "#475569", fontSize: 10, fontFamily: "'DM Mono',monospace" }}>pts</div>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 22, color: "#F59E0B", lineHeight: 1 }}>{player.score ?? 0}</div>
+                  <div style={{ color: "#475569", fontSize: 9, fontFamily: "'DM Mono',monospace", letterSpacing: 1 }}>PTS</div>
+                  <div style={{ color: "#64748B", fontSize: 10, fontFamily: "'DM Mono',monospace", marginTop: 2 }}>{facts}/12 facts</div>
                 </div>
               </div>
             );
           })}
         </div>
-        <button onClick={onClose} style={{ width: "100%", padding: "16px 0", borderRadius: 12, background: "linear-gradient(135deg,#1A56DB,#1e40af)", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 20, letterSpacing: 1 }}>
-          PLAY AGAIN
-        </button>
+
+        {/* Donate card with coffee mug — keep the divide alive */}
+        <div style={{ background: "linear-gradient(135deg, #1A1D2E 0%, #1F2138 100%)", borderRadius: 16, padding: "20px 20px", marginBottom: 12, border: "1.5px solid #F59E0B30", position: "relative", overflow: "hidden", boxShadow: "0 4px 30px rgba(245,158,11,0.08)" }}>
+          <img src="/cafecito-logo.webp" alt=""
+            style={{ position: "absolute", right: mobile ? -16 : -10, top: mobile ? -10 : -6, height: mobile ? 220 : 250, pointerEvents: "none", filter: "drop-shadow(0 6px 18px rgba(0,0,0,0.4))" }} />
+          <div style={{ paddingRight: mobile ? 150 : 190 }}>
+            <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 15, marginBottom: 5, lineHeight: 1.2 }}>KEEP THE<br/>DIVIDE ALIVE</div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              {[["$3","Coffee"],["$6","Double"],["$9","Mega"]].map(([amt, lbl]) => (
+                <a key={amt} href={KOFI_URL} target="_blank" rel="noopener noreferrer"
+                  onClick={() => trackEvent("donate_click", { amount: amt, from: "debate_results" })}
+                  style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 1, padding: "9px 4px", borderRadius: 10, background: "#252840", border: "1px solid #2D3154", textDecoration: "none" }}>
+                  <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 16, color: "#F59E0B" }}>{amt}</span>
+                  <span style={{ fontSize: 9, color: "#64748B" }}>{lbl}</span>
+                </a>
+              ))}
+            </div>
+            <a href={KOFI_URL} target="_blank" rel="noopener noreferrer"
+              onClick={() => trackEvent("donate_click", { amount: "custom", from: "debate_results" })}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 0", borderRadius: 10, background: "#FF5E5B", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 14, letterSpacing: 1, textDecoration: "none", width: "100%" }}>
+              ☕ BUY A COFFEE
+            </a>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+          <button onClick={onClose}
+            style={{ padding: "16px 0", borderRadius: 12, background: "linear-gradient(135deg,#1A56DB,#1e40af)", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 17, letterSpacing: 1 }}>
+            PLAY AGAIN
+          </button>
+          <button onClick={handleShare} disabled={shareGenerating}
+            style={{ padding: "16px 0", borderRadius: 12, background: "#1A1D2E", border: "1.5px solid #2D3154", color: "#F8FAFC", fontFamily: "'Anton',sans-serif", fontSize: 15, letterSpacing: 1 }}>
+            {shareGenerating ? "GENERATING…" : "📤 SHARE →"}
+          </button>
+        </div>
       </div>
     </div>
   );
+}
+
+async function buildDebateShareCanvas(sorted) {
+  const W = 1200, H = 630;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#0F1221"; ctx.fillRect(0, 0, W, H);
+
+  // Side gradient strips
+  const lg = ctx.createLinearGradient(0, 0, W, 0);
+  lg.addColorStop(0, "#1A56DB22"); lg.addColorStop(0.5, "transparent"); lg.addColorStop(1, "#B91C1C22");
+  ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+
+  // Top bar
+  const bar = ctx.createLinearGradient(0, 0, W, 0);
+  bar.addColorStop(0, "#1A56DB"); bar.addColorStop(0.5, "#F59E0B"); bar.addColorStop(1, "#B91C1C");
+  ctx.fillStyle = bar; ctx.fillRect(0, 0, W, 6);
+
+  // Header
+  ctx.fillStyle = "#64748B"; ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center";
+  ctx.fillText("DEBATE RESULTS", W / 2, 70);
+  ctx.fillStyle = "#F8FAFC"; ctx.font = "bold 52px sans-serif";
+  ctx.fillText("WHO'S THE MOST BIASED?", W / 2, 130);
+
+  // Top 3 rows
+  const top = sorted.slice(0, Math.min(sorted.length, 4));
+  const rowH = 90, startY = 200;
+  top.forEach((player, i) => {
+    const g = player.gauge ?? 50, r = getResult(g);
+    const y = startY + i * rowH;
+    // Row bg
+    ctx.fillStyle = i === 0 ? "#1A1D2E" : "#15182780";
+    ctx.fillRect(80, y, W - 160, rowH - 12);
+    // Medal
+    ctx.fillStyle = "#F8FAFC"; ctx.font = "bold 44px sans-serif"; ctx.textAlign = "left";
+    ctx.fillText(["🥇","🥈","🥉"][i] ?? `${i+1}.`, 110, y + 56);
+    // Name
+    ctx.fillStyle = "#F8FAFC"; ctx.font = "bold 36px sans-serif";
+    ctx.fillText(player.name.toUpperCase(), 200, y + 42);
+    // Archetype
+    ctx.fillStyle = r.color; ctx.font = "22px sans-serif";
+    ctx.fillText(r.label.toUpperCase(), 200, y + 70);
+    // Score
+    ctx.fillStyle = "#F59E0B"; ctx.font = "bold 42px sans-serif"; ctx.textAlign = "right";
+    ctx.fillText(`${player.score ?? 0}`, W - 110, y + 50);
+    ctx.fillStyle = "#64748B"; ctx.font = "16px sans-serif";
+    ctx.fillText("PTS", W - 110, y + 72);
+  });
+
+  // URL
+  ctx.fillStyle = "#F59E0B"; ctx.font = "bold 30px sans-serif"; ctx.textAlign = "center";
+  ctx.fillText(SITE_URL, W / 2, H - 30);
+
+  return canvas;
 }
 
 // ─── TheGreatDivide ───────────────────────────────────────────────────────────
