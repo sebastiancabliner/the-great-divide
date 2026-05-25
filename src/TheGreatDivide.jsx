@@ -6,6 +6,41 @@ function captureError(context, err) {
   try { Sentry.captureException(err, { tags: { context } }); } catch (_) {}
 }
 
+// ── Stats endpoints (aggregate counters for social proof + ranking modal) ────
+async function recordStat(payload) {
+  try {
+    await fetch(`${PROXY_URL}/stats/record`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true, // survives page unload
+    });
+  } catch (err) { captureError("stat_record", err); }
+}
+
+// Group the 7 archetypes into 3 broad families for the bar visualization
+const FAMILY_LEFT  = new Set(["The Progressive Firebrand", "The Liberal Democrat", "The Center-Left Pragmatist"]);
+const FAMILY_RIGHT = new Set(["The Center-Right Moderate", "The Conservative", "The MAGA Loyalist"]);
+function aggregateFamilies(archetypes) {
+  let left = 0, center = 0, right = 0;
+  for (const [name, count] of Object.entries(archetypes)) {
+    if (FAMILY_LEFT.has(name))  left   += count;
+    else if (FAMILY_RIGHT.has(name)) right += count;
+    else center += count;
+  }
+  const total = left + center + right;
+  if (!total) return null;
+  return { left, center, right, total, leftPct: Math.round(left*100/total), centerPct: Math.round(center*100/total), rightPct: Math.round(right*100/total) };
+}
+
+async function fetchStats() {
+  try {
+    const res  = await fetch(`${PROXY_URL}/stats`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) { captureError("stat_fetch", err); return null; }
+}
+
 // ── Last-result memory (return visitor experience + revancha comparison) ─────
 const LAST_RESULT_KEY = "tgd_last_result";
 
@@ -471,6 +506,91 @@ function ShareSheet({ gauge, result, stats, knowledge, onClose }) {
   );
 }
 
+// ─── RankingModal ─────────────────────────────────────────────────────────────
+
+function RankingModal({ onClose }) {
+  const mobile = window.innerWidth < 640;
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const lastResult = loadLastResult();
+  const myBadge    = lastResult?.knowledgeLabel;
+
+  useEffect(() => { fetchStats().then(s => { setStats(s); setLoading(false); }); }, []);
+
+  // Flatten KNOWLEDGE_BADGES into 21 entries with their bias archetype info
+  const allBadges = [];
+  KNOWLEDGE_BADGES.forEach((trio, archIdx) => {
+    const arch = ARCHETYPES[archIdx];
+    trio.forEach(b => allBadges.push({ ...b, archetype: arch.label, archColor: arch.color }));
+  });
+
+  const totalBadges = stats ? Object.values(stats.badges || {}).reduce((s,n) => s+n, 0) : 0;
+  const sortedBadges = [...allBadges].map(b => ({
+    ...b,
+    count: stats?.badges?.[b.label] || 0,
+    pct:   totalBadges ? (stats?.badges?.[b.label] || 0) * 100 / totalBadges : 0,
+  })).sort((a, b) => b.count - a.count);
+
+  return (
+    <div onClick={e => e.target === e.currentTarget && onClose()}
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.8)", backdropFilter: "blur(8px)", zIndex: 250, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: mobile ? "20px 12px" : "40px 20px", overflowY: "auto" }}>
+      <div className="fade-in" style={{ background: "#0F1221", borderRadius: 16, padding: mobile ? "20px 16px" : "24px 22px", maxWidth: 560, width: "100%", border: "1px solid #252840", marginTop: mobile ? 0 : 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div>
+            <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 2, marginBottom: 2 }}>WHERE EVERYONE LANDS</div>
+            <h3 style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 24 : 28, letterSpacing: ".5px", lineHeight: 1.05 }}>THE 21 ARCHETYPES</h3>
+          </div>
+          <button onClick={onClose} style={{ background: "none", color: "#64748B", fontSize: 28, lineHeight: 1, border: "none", cursor: "pointer" }}>×</button>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "40px 0", color: "#475569", fontFamily: "'DM Mono',monospace", fontSize: 12 }}>Loading rankings…</div>
+        ) : totalBadges < 5 ? (
+          <div style={{ textAlign: "center", padding: "30px 0 20px" }}>
+            <div style={{ color: "#94A3B8", fontSize: 15, marginBottom: 10 }}>Not enough data yet.</div>
+            <div style={{ color: "#475569", fontSize: 13 }}>Be one of the first to land in an archetype.</div>
+          </div>
+        ) : (
+          <>
+            <div style={{ color: "#94A3B8", fontSize: 12, marginBottom: 14 }}>
+              Based on <strong style={{ color: "#F59E0B" }}>{totalBadges.toLocaleString()}</strong> players. Sorted by popularity.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {sortedBadges.map((b, i) => {
+                const isMine = myBadge === b.label;
+                return (
+                  <div key={b.label} style={{ background: isMine ? `${b.archColor}18` : "#1A1D2E", borderRadius: 10, padding: "10px 12px", border: isMine ? `1.5px solid ${b.archColor}88` : "1px solid #252840", display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ color: "#475569", fontFamily: "'DM Mono',monospace", fontSize: 11, width: 24, textAlign: "right", flexShrink: 0 }}>#{i+1}</span>
+                    <span style={{ fontSize: 20, flexShrink: 0 }}>{b.icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 3 }}>
+                        <span style={{ color: "#F8FAFC", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {b.label} {isMine && <span style={{ color: "#F59E0B", fontFamily: "'DM Mono',monospace", fontSize: 9, marginLeft: 4 }}>· YOU</span>}
+                        </span>
+                        <span style={{ color: "#94A3B8", fontFamily: "'DM Mono',monospace", fontSize: 10, flexShrink: 0 }}>
+                          {b.pct.toFixed(1)}% · {b.count}
+                        </span>
+                      </div>
+                      <div style={{ height: 4, background: "#252840", borderRadius: 2, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${Math.min(100, b.pct * 3)}%`, background: b.archColor, borderRadius: 2, transition: "width .4s" }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        <button onClick={onClose}
+          style={{ marginTop: 16, width: "100%", padding: "12px 0", borderRadius: 10, background: "#1A1D2E", border: "1.5px solid #2D3154", color: "#F8FAFC", fontFamily: "'Anton',sans-serif", fontSize: 14, letterSpacing: 1, cursor: "pointer" }}>
+          CLOSE
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── DonateModal ──────────────────────────────────────────────────────────────
 
 function DonateModal({ onClose }) {
@@ -600,9 +720,15 @@ function ContactModal({ onClose }) {
 
 // ─── HomeScreen ───────────────────────────────────────────────────────────────
 
-function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
+function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate, onOpenRanking }) {
   const mobile = window.innerWidth < 640;
   const [lastResult] = useState(() => loadLastResult());
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => { fetchStats().then(setStats); }, []);
+
+  // Aggregate archetypes into 3 ideological families for the bar
+  const family = stats ? aggregateFamilies(stats.archetypes || {}) : null;
 
   return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column" }}>
@@ -631,9 +757,33 @@ function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
 
       {/* Content — description + CTAs on plain bg */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: mobile ? "20px 20px 40px" : "26px 24px 60px", maxWidth: 520, margin: "0 auto", width: "100%" }}>
-        <p style={{ color: "#94A3B8", fontSize: 15, textAlign: "center", lineHeight: 1.6, marginBottom: lastResult ? 16 : 32, maxWidth: 380 }}>
+        <p style={{ color: "#94A3B8", fontSize: 15, textAlign: "center", lineHeight: 1.6, marginBottom: 16, maxWidth: 380 }}>
           12 questions. No filter. Discover your political bias and your <strong style={{ color: "#F59E0B" }}>Divide-O-Meter</strong> score.
         </p>
+
+        {/* Social proof strip — total players + family distribution */}
+        {family && family.total >= 5 && (
+          <button onClick={onOpenRanking} className="fade-in"
+            style={{ width: "100%", background: "#1A1D2E", borderRadius: 12, padding: "12px 14px", marginBottom: 12, border: "1px solid #252840", textAlign: "left", cursor: "pointer" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+              <span style={{ color: "#94A3B8", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 1.5 }}>
+                <span style={{ color: "#F59E0B", fontFamily: "'Anton',sans-serif", fontSize: 18, marginRight: 6 }}>{family.total.toLocaleString()}</span>
+                {lastResult ? "VOTERS HAVE PLAYED" : "VOTERS HAVE TAKEN THE TEST"}
+              </span>
+              <span style={{ color: "#F59E0B", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 1 }}>SEE RANKING →</span>
+            </div>
+            <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", marginBottom: 6, background: "#252840" }}>
+              <div style={{ width: `${family.leftPct}%`,   background: "#1A56DB", transition: "width .3s" }} />
+              <div style={{ width: `${family.centerPct}%`, background: "#F59E0B", transition: "width .3s" }} />
+              <div style={{ width: `${family.rightPct}%`,  background: "#C81E1E", transition: "width .3s" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "'DM Mono',monospace", fontSize: 10 }}>
+              <span style={{ color: "#1A56DB" }}>← {family.leftPct}% LEFT</span>
+              <span style={{ color: "#F59E0B" }}>{family.centerPct}% CENTER</span>
+              <span style={{ color: "#C81E1E" }}>{family.rightPct}% RIGHT →</span>
+            </div>
+          </button>
+        )}
 
         {/* Return visitor strip — show last badge if exists */}
         {lastResult && (
@@ -952,7 +1102,7 @@ function GameScreen({ onComplete, onQuit }) {
 
 // ─── DivideOmeterCard ─────────────────────────────────────────────────────────
 
-function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
+function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate, onOpenRanking }) {
   const mobile  = window.innerWidth < 640;
   const gauge   = calcDivideOMeter(answers);
   const result  = getResult(gauge);
@@ -965,6 +1115,8 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
 
   useEffect(() => {
     trackEvent("game_complete", { gauge, archetype: result.label, score: stats.score, knowledge_tier: knowledge.tier, knowledge_label: knowledge.label });
+    // Server-side aggregate for social proof + ranking modal
+    recordStat({ archetype: result.label, badge: knowledge.label, tier: knowledge.tier });
     // Persist this result for the next visit
     saveLastResult({ gauge, archetype: result.label, archetypeColor: result.color, knowledgeLabel: knowledge.label, knowledgeIcon: knowledge.icon, knowledgeTier: knowledge.tier, factsCorrect: stats.factsCorrect, score: stats.score });
     // Celebration
@@ -1042,6 +1194,12 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
             </div>
           </div>
           <p style={{ color: "#94A3B8", fontSize: 13, lineHeight: 1.6, margin: 0 }}>{knowledge.quote}</p>
+          {onOpenRanking && (
+            <button onClick={onOpenRanking}
+              style={{ marginTop: 10, background: "none", color: "#F59E0B", fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: 1, border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>
+              SEE WHERE YOU RANK →
+            </button>
+          )}
         </div>
 
         {/* Knowledge gauge — horizontal 15-segment bar parallel to Divide-O-Meter */}
@@ -1822,6 +1980,7 @@ export default function TheGreatDivide() {
   const [gameAnswers,  setGameAnswers]  = useState([]);
   const [showContact,  setShowContact]  = useState(false);
   const [showDonate,   setShowDonate]   = useState(false);
+  const [showRanking,  setShowRanking]  = useState(false);
   const [debateRoom,   setDebateRoom]   = useState(null);
   const [debatePlayer, setDebatePlayer] = useState(null);
 
@@ -1831,16 +1990,17 @@ export default function TheGreatDivide() {
     <>
       <GlobalStyles />
 
-      {screen === "home"    && <HomeScreen onPlay={() => setScreen("game")} onHowTo={() => setScreen("howto")} onDebate={() => setScreen("debate-start")} onContact={() => setShowContact(true)} onDonate={() => setShowDonate(true)} />}
+      {screen === "home"    && <HomeScreen onPlay={() => setScreen("game")} onHowTo={() => setScreen("howto")} onDebate={() => setScreen("debate-start")} onContact={() => setShowContact(true)} onDonate={() => setShowDonate(true)} onOpenRanking={() => setShowRanking(true)} />}
       {screen === "howto"   && <HowToPlayScreen onBack={() => setScreen("home")} onPlay={() => setScreen("game")} />}
       {screen === "game"    && <GameScreen onComplete={ans => { setGameAnswers(ans); setScreen("result"); }} onQuit={goHome} />}
-      {screen === "result"  && <DivideOmeterCard answers={gameAnswers} onPlayAgain={() => setScreen("game")} onContact={() => setShowContact(true)} onDonate={() => setShowDonate(true)} />}
+      {screen === "result"  && <DivideOmeterCard answers={gameAnswers} onPlayAgain={() => setScreen("game")} onContact={() => setShowContact(true)} onDonate={() => setShowDonate(true)} onOpenRanking={() => setShowRanking(true)} />}
       {screen === "debate-start"  && <DebateStartScreen onBack={() => setScreen("home")} onHostGame={d => { setDebateRoom(d); setScreen("debate-host"); }} onJoinGame={d => { setDebatePlayer(d); setScreen("debate-player"); }} />}
       {screen === "debate-host"   && debateRoom   && <DebateHostScreen   roomData={debateRoom}   onClose={goHome} />}
       {screen === "debate-player" && debatePlayer && <DebatePlayerScreen roomInfo={debatePlayer} onClose={goHome} />}
 
       {showContact && <ContactModal  onClose={() => setShowContact(false)} />}
       {showDonate  && <DonateModal   onClose={() => setShowDonate(false)}  />}
+      {showRanking && <RankingModal  onClose={() => setShowRanking(false)} />}
 
       {/* Persistent Support button — visible on every screen except home (home has its own) */}
       {screen !== "home" && (
