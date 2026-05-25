@@ -588,8 +588,8 @@ function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
         {/* Logo top, H1 bottom — both over the image */}
         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: mobile ? "70px 20px 28px" : "88px 24px 36px" }}>
           <Logo height={mobile ? 170 : 240} />
-          <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 42 : 58, letterSpacing: ".5px", textAlign: "center", lineHeight: 1.05, color: "#F8FAFC", textShadow: "0 2px 16px rgba(0,0,0,0.75), 0 0 32px rgba(0,0,0,0.55)", margin: 0 }}>
-            HOW BIASED<br />ARE YOU?
+          <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 38 : 56, letterSpacing: ".5px", textAlign: "center", lineHeight: 1.05, color: "#F8FAFC", textShadow: "0 2px 16px rgba(0,0,0,0.75), 0 0 32px rgba(0,0,0,0.55)", margin: 0 }}>
+            WHAT KIND OF<br />VOTER ARE YOU?
           </h1>
         </div>
       </div>
