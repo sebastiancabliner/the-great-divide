@@ -6,6 +6,40 @@ function captureError(context, err) {
   try { Sentry.captureException(err, { tags: { context } }); } catch (_) {}
 }
 
+// ── Last-result memory (return visitor experience + revancha comparison) ─────
+const LAST_RESULT_KEY = "tgd_last_result";
+
+function saveLastResult(payload) {
+  try { localStorage.setItem(LAST_RESULT_KEY, JSON.stringify({ ...payload, savedAt: Date.now() })); } catch (_) {}
+}
+
+function loadLastResult() {
+  try {
+    const raw = localStorage.getItem(LAST_RESULT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Expire after 30 days so an old badge doesn't shadow a real comeback
+    if (Date.now() - (parsed.savedAt || 0) > 30 * 24 * 60 * 60 * 1000) return null;
+    return parsed;
+  } catch (_) { return null; }
+}
+
+// ── Lazy confetti — only loaded when results screen actually triggers it ─────
+async function fireConfetti(color) {
+  try {
+    const mod = await import("canvas-confetti");
+    const confetti = mod.default;
+    const end = Date.now() + 800;
+    const colors = color ? [color, "#F8FAFC", "#F59E0B"] : ["#1A56DB", "#E02424", "#F59E0B"];
+    (function frame() {
+      confetti({ particleCount: 4, angle: 60,  spread: 55, origin: { x: 0, y: 0.7 }, colors });
+      confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    })();
+    if (navigator.vibrate) navigator.vibrate([12, 40, 12]);
+  } catch (err) { captureError("confetti", err); }
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const PROXY_URL = "https://tgd-proxy.sebastiancabello.workers.dev";
@@ -568,6 +602,7 @@ function ContactModal({ onClose }) {
 
 function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
   const mobile = window.innerWidth < 640;
+  const [lastResult] = useState(() => loadLastResult());
 
   return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column" }}>
@@ -596,9 +631,23 @@ function HomeScreen({ onPlay, onHowTo, onDebate, onContact, onDonate }) {
 
       {/* Content — description + CTAs on plain bg */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: mobile ? "20px 20px 40px" : "26px 24px 60px", maxWidth: 520, margin: "0 auto", width: "100%" }}>
-        <p style={{ color: "#94A3B8", fontSize: 15, textAlign: "center", lineHeight: 1.6, marginBottom: 32, maxWidth: 380 }}>
+        <p style={{ color: "#94A3B8", fontSize: 15, textAlign: "center", lineHeight: 1.6, marginBottom: lastResult ? 16 : 32, maxWidth: 380 }}>
           12 questions. No filter. Discover your political bias and your <strong style={{ color: "#F59E0B" }}>Divide-O-Meter</strong> score.
         </p>
+
+        {/* Return visitor strip — show last badge if exists */}
+        {lastResult && (
+          <div className="fade-in" style={{ width: "100%", background: "#1A1D2E", borderRadius: 12, padding: "12px 14px", marginBottom: 24, border: `1px solid ${lastResult.archetypeColor || "#252840"}44`, display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 24 }}>{lastResult.knowledgeIcon || "👋"}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: 1.5, marginBottom: 2 }}>WELCOME BACK — LAST TIME YOU WERE</div>
+              <div style={{ color: lastResult.archetypeColor || "#F59E0B", fontFamily: "'Anton',sans-serif", fontSize: 15, letterSpacing: ".5px", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {(lastResult.knowledgeLabel || lastResult.archetype || "").toUpperCase()}
+              </div>
+            </div>
+            <span style={{ color: "#F59E0B", fontFamily: "'Anton',sans-serif", fontSize: 14, letterSpacing: 1, flexShrink: 0 }}>RUN IT BACK →</span>
+          </div>
+        )}
 
         {/* Split CTA — blue left / red right */}
         <button onClick={() => { trackEvent("game_start", { mode: "solo" }); onPlay(); }}
@@ -688,8 +737,11 @@ function GameScreen({ onComplete, onQuit }) {
   const [lastBias,     setLastBias]     = useState(null);
   const [answers,      setAnswers]      = useState([]);
   const [score,        setScore]        = useState(0);
-  const timerRef   = useRef(null);
-  const answersRef = useRef([]);
+  const [showPartBTip, setShowPartBTip] = useState(false);
+  const timerRef     = useRef(null);
+  const answersRef   = useRef([]);
+  const qViewedAtRef = useRef(Date.now());
+  const completedRef = useRef(false);
   useEffect(() => { answersRef.current = answers; }, [answers]);
   useEffect(() => () => clearTimeout(timerRef.current), []);
   useEffect(() => {
@@ -697,6 +749,36 @@ function GameScreen({ onComplete, onQuit }) {
       timerRef.current = setTimeout(advanceFromTransition, 1200);
     }
   }, [inTransition]);
+
+  // Reset view timestamp + fire question_view + show Part B tooltip first time
+  useEffect(() => {
+    if (inTransition) return;
+    qViewedAtRef.current = Date.now();
+    trackEvent("question_view", { q_index: qIndex, part, q_id: questions[qIndex]?.id });
+    if (part === "B" && qIndex === 0) {
+      try {
+        if (!localStorage.getItem("tgd_partb_tip_seen")) {
+          setShowPartBTip(true);
+          localStorage.setItem("tgd_partb_tip_seen", "1");
+        }
+      } catch (_) {}
+    }
+  }, [qIndex, part, inTransition]);
+
+  // Abandonment tracking: fire game_abandoned if user closes/leaves mid-quiz
+  useEffect(() => {
+    const fireAbandon = () => {
+      if (completedRef.current) return;
+      trackEvent("game_abandoned", { q_index: qIndex, part, completion_pct: Math.round(((qIndex + (part === "A" ? 0 : 0.5)) / questions.length) * 100) });
+    };
+    const onVis = () => { if (document.visibilityState === "hidden") fireAbandon(); };
+    window.addEventListener("beforeunload", fireAbandon);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("beforeunload", fireAbandon);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [qIndex, part, questions.length]);
 
   const q      = questions[qIndex];
   const mobile = window.innerWidth < 640;
@@ -744,18 +826,19 @@ function GameScreen({ onComplete, onQuit }) {
   function handleConfirm() {
     if (selected === null || confirmed) return;
     setConfirmed(true);
+    const time_ms = Date.now() - qViewedAtRef.current;
     if (isA) {
       const pts = selected === q.A.ans ? 15 : 0;
       setScore(s => s + pts);
       setAnswers(prev => { const a = [...prev]; a[qIndex] = { aPartChoice: selected, aPartCorrect: q.A.ans, bPartChoice: null, bPartBias: null }; return a; });
-      trackEvent("question_answered", { part: "A", q_id: q.id, correct: selected === q.A.ans });
+      trackEvent("question_answered", { part: "A", q_id: q.id, q_index: qIndex, correct: selected === q.A.ans, time_ms });
       timerRef.current = setTimeout(() => { setPart("B"); setSelected(null); setConfirmed(false); }, 1000);
     } else {
       const bias     = q.B.bias[selected] ?? "NEU";
       const biasInfo = BIAS_META[bias] ?? { label: bias, color: "#64748B", desc: "" };
       setScore(s => s + 15);
       setAnswers(prev => { const a = [...prev]; a[qIndex] = { ...a[qIndex], bPartChoice: selected, bPartBias: bias }; return a; });
-      trackEvent("question_answered", { part: "B", q_id: q.id, bias });
+      trackEvent("question_answered", { part: "B", q_id: q.id, q_index: qIndex, bias, time_ms });
       setLastBias(biasInfo);
       setInTransition(true);
     }
@@ -765,6 +848,7 @@ function GameScreen({ onComplete, onQuit }) {
     setInTransition(false);
     const next = qIndex + 1;
     if (next >= questions.length) {
+      completedRef.current = true;
       onComplete(answersRef.current.map((a, i) => ({ ...a, aPartCorrect: questions[i].A.ans })));
     } else {
       setQIndex(next); setPart("A"); setSelected(null); setConfirmed(false);
@@ -843,6 +927,25 @@ function GameScreen({ onComplete, onQuit }) {
         )}
 
       </div>
+
+      {/* First-time Part B explainer */}
+      {showPartBTip && (
+        <div onClick={() => setShowPartBTip(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", backdropFilter: "blur(6px)", zIndex: 250, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, cursor: "pointer" }}>
+          <div onClick={e => e.stopPropagation()} className="fade-in"
+            style={{ background: "#1A1D2E", border: "1.5px solid #E0242466", borderRadius: 16, padding: 24, maxWidth: 400, cursor: "default" }}>
+            <div style={{ color: "#E02424", fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: 2, marginBottom: 8 }}>HEADS UP — PART B</div>
+            <h3 style={{ fontFamily: "'Anton',sans-serif", fontSize: 24, marginBottom: 10, lineHeight: 1.1 }}>NO RIGHT ANSWER HERE</h3>
+            <p style={{ color: "#94A3B8", fontSize: 14, lineHeight: 1.65, marginBottom: 18 }}>
+              Each option reflects a different political framing. We're not testing facts now — we're seeing <strong style={{ color: "#F8FAFC" }}>how you think about the issue</strong>. Pick whichever feels truest. We'll reveal what it says about you at the end.
+            </p>
+            <button onClick={() => setShowPartBTip(false)}
+              style={{ width: "100%", padding: "13px 0", borderRadius: 10, background: "#E02424", color: "#fff", fontFamily: "'Anton',sans-serif", fontSize: 16, letterSpacing: 1, border: "none" }}>
+              GOT IT
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -857,10 +960,21 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
   const knowledge = getKnowledgeBadge(gauge, stats.factsCorrect);
   const [showShare,    setShowShare]    = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  // Snapshot the previous result BEFORE we overwrite it, so we can show comparison
+  const [prevResult] = useState(() => loadLastResult());
 
   useEffect(() => {
     trackEvent("game_complete", { gauge, archetype: result.label, score: stats.score, knowledge_tier: knowledge.tier, knowledge_label: knowledge.label });
+    // Persist this result for the next visit
+    saveLastResult({ gauge, archetype: result.label, archetypeColor: result.color, knowledgeLabel: knowledge.label, knowledgeIcon: knowledge.icon, knowledgeTier: knowledge.tier, factsCorrect: stats.factsCorrect, score: stats.score });
+    // Celebration
+    fireConfetti(result.color);
   }, []);
+
+  // Knowledge tier improvement detection
+  const TIER_ORDER = { LOW: 0, MED: 1, HIGH: 2 };
+  const tierImproved = prevResult && TIER_ORDER[knowledge.tier] > TIER_ORDER[prevResult.knowledgeTier ?? "LOW"];
+  const archetypeChanged = prevResult && prevResult.archetype !== result.label;
 
   const biasCounts = {};
   answers.forEach(({ bPartBias }) => { if (bPartBias) biasCounts[bPartBias] = (biasCounts[bPartBias] ?? 0) + 1; });
@@ -958,6 +1072,23 @@ function DivideOmeterCard({ answers, onPlayAgain, onContact, onDonate }) {
           <span style={{ color: "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 2 }}>FINAL SCORE</span>
           <span style={{ fontFamily: "'Anton',sans-serif", fontSize: mobile ? 22 : 26, color: "#F59E0B", letterSpacing: 1 }}>{scoreStr} <span style={{ fontSize: 12, color: "#475569" }}>PTS</span></span>
         </div>
+
+        {/* Revancha — compare to previous result if exists */}
+        {prevResult && (
+          <div className="fade-in" style={{ background: tierImproved ? "linear-gradient(135deg, #1A1D2E, #15302A)" : "#1A1D2E", borderRadius: 12, padding: "14px 16px", marginBottom: 12, border: `1px solid ${tierImproved ? "#22C55E40" : "#252840"}` }}>
+            <div style={{ color: tierImproved ? "#22C55E" : "#64748B", fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: 2, marginBottom: 8 }}>
+              {tierImproved ? "📈 KNOWLEDGE UP" : "↩ YOUR LAST RUN"}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "#94A3B8" }}>
+              <span style={{ fontSize: 18 }}>{prevResult.knowledgeIcon || "•"}</span>
+              <span style={{ flex: 1 }}>
+                <span style={{ color: prevResult.archetypeColor || "#94A3B8" }}>{prevResult.knowledgeLabel || prevResult.archetype}</span>
+                <span style={{ color: "#475569" }}> · {prevResult.factsCorrect ?? 0}/12 facts · {prevResult.score ?? 0} pts</span>
+              </span>
+              <span style={{ color: archetypeChanged ? "#F59E0B" : "#475569", fontFamily: "'DM Mono',monospace", fontSize: 11 }}>{archetypeChanged ? "SHIFTED" : "SAME"}</span>
+            </div>
+          </div>
+        )}
 
         {/* Donate card with coffee mug — surfaced ABOVE bias breakdown so it's visible without scrolling */}
         <div style={{ background: "linear-gradient(135deg, #1A1D2E 0%, #1F2138 100%)", borderRadius: 16, padding: "20px 20px", marginBottom: 12, border: "1.5px solid #F59E0B30", position: "relative", overflow: "hidden", boxShadow: "0 4px 30px rgba(245,158,11,0.08)" }}>
@@ -1493,6 +1624,13 @@ function DebatePlayerScreen({ roomInfo, onClose }) {
 function DebateResultsScreen({ results, onClose }) {
   const mobile = window.innerWidth < 640;
   const [shareGenerating, setShareGenerating] = useState(false);
+
+  useEffect(() => {
+    if (!results?.players?.length) return;
+    const sorted = [...results.players].sort((a, b) => b.score - a.score);
+    const winnerColor = getResult(sorted[0]?.gauge ?? 50).color;
+    fireConfetti(winnerColor);
+  }, []);
 
   if (!results?.players) return (
     <div style={{ minHeight: "100vh", background: "#0f1221", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
